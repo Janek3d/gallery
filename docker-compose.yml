@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: gallery_db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-gallery}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gallery_network
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    container_name: gallery_seaweedfs
+    command: "server -master.port=9333 -volume.port=8080 -filer.port=8888 -s3.port=8333"
+    ports:
+      - "9333:9333"  # Master
+      - "8080:8080"  # Volume
+      - "8888:8888"  # Filer
+      - "8333:8333"  # S3
+    volumes:
+      - seaweedfs_data:/data
+    networks:
+      - gallery_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:9333/dir/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  web:
+    build: .
+    container_name: gallery_web
+    command: sh -c "python manage.py migrate --noinput && gunicorn --bind 0.0.0.0:8000 --workers 4 --timeout 120 config.wsgi:application"
+    volumes:
+      - ./app:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    networks:
+      - gallery_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: gallery_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - static_volume:/static:ro
+      - media_volume:/media:ro
+    depends_on:
+      - web
+    networks:
+      - gallery_network
+
+volumes:
+  postgres_data:
+  seaweedfs_data:
+  static_volume:
+  media_volume:
+
+networks:
+  gallery_network:
+    driver: bridge
