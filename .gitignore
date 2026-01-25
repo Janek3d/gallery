@@ -25,6 +25,10 @@ db.sqlite3-journal
 .env.local
 .env.*.local
 
+# Configuration files
+config.yaml
+!config.example.yaml
+
 # IDE
 .vscode/
 .idea/
