@@ -32,12 +32,15 @@ config = get_config_loader()
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config.get('django.secret_key', 'django-insecure-z&x2fgjdjshurb8*p9jtwlov@hy!_h&+obyi1(kl7u^#u5#dr$', 'SECRET_KEY')
+# Uses DJANGO_SECRET_KEY env var or config.yaml django.secret_key
+SECRET_KEY = config.get('django.secret_key', 'django-insecure-z&x2fgjdjshurb8*p9jtwlov@hy!_h&+obyi1(kl7u^#u5#dr$')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config.get_bool('django.debug', False, 'DEBUG')
+# Uses DJANGO_DEBUG env var or config.yaml django.debug
+DEBUG = config.get_bool('django.debug', False)
 
-ALLOWED_HOSTS = config.get_list('django.allowed_hosts', ['localhost', '127.0.0.1'], 'ALLOWED_HOSTS')
+# Uses DJANGO_ALLOWED_HOSTS env var or config.yaml django.allowed_hosts
+ALLOWED_HOSTS = config.get_list('django.allowed_hosts', ['localhost', '127.0.0.1'])
 
 
 # Application definition
@@ -61,7 +64,8 @@ INSTALLED_APPS = [
 ]
 
 # Add storages if using S3/SeaweedFS
-USE_S3 = config.get_bool('storage.use_s3', False, 'USE_S3')
+# Uses STORAGE_USE_S3 env var or config.yaml storage.use_s3
+USE_S3 = config.get_bool('storage.use_s3', False)
 if USE_S3:
     INSTALLED_APPS.append('storages')
 
@@ -103,11 +107,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config.get('database.name', 'gallery', 'DB_NAME'),
-        'USER': config.get('database.user', 'postgres', 'DB_USER'),
-        'PASSWORD': config.get('database.password', 'postgres', 'DB_PASSWORD'),
-        'HOST': config.get('database.host', 'db', 'DB_HOST'),
-        'PORT': config.get('database.port', '5432', 'DB_PORT'),
+        # Uses DATABASE_NAME, DATABASE_USER, etc. env vars or config.yaml
+        'NAME': config.get('database.name', 'gallery'),
+        'USER': config.get('database.user', 'postgres'),
+        'PASSWORD': config.get('database.password', 'postgres'),
+        'HOST': config.get('database.host', 'db'),
+        'PORT': config.get('database.port', '5432'),
     }
 }
 
@@ -154,12 +159,13 @@ MEDIA_ROOT = BASE_DIR / config.get('static_files.media_root', 'media')
 # SeaweedFS / S3 Storage Configuration
 if USE_S3:
     # SeaweedFS S3-compatible storage
-    AWS_ACCESS_KEY_ID = config.get('storage.s3.access_key_id', '', 'AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = config.get('storage.s3.secret_access_key', '', 'AWS_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = config.get('storage.s3.bucket_name', 'gallery', 'AWS_STORAGE_BUCKET_NAME')
-    AWS_S3_ENDPOINT_URL = config.get('storage.s3.endpoint_url', 'http://seaweedfs:8333', 'AWS_S3_ENDPOINT_URL')
-    AWS_S3_REGION_NAME = config.get('storage.s3.region_name', 'us-east-1', 'AWS_S3_REGION_NAME')
-    AWS_S3_USE_SSL = config.get_bool('storage.s3.use_ssl', False, 'AWS_S3_USE_SSL')
+    # Uses STORAGE_S3_ACCESS_KEY_ID, STORAGE_S3_SECRET_ACCESS_KEY, etc. env vars or config.yaml
+    AWS_ACCESS_KEY_ID = config.get('storage.s3.access_key_id', '')
+    AWS_SECRET_ACCESS_KEY = config.get('storage.s3.secret_access_key', '')
+    AWS_STORAGE_BUCKET_NAME = config.get('storage.s3.bucket_name', 'gallery')
+    AWS_S3_ENDPOINT_URL = config.get('storage.s3.endpoint_url', 'http://seaweedfs:8333')
+    AWS_S3_REGION_NAME = config.get('storage.s3.region_name', 'us-east-1')
+    AWS_S3_USE_SSL = config.get_bool('storage.s3.use_ssl', False)
     AWS_S3_FILE_OVERWRITE = False
     AWS_DEFAULT_ACL = None
     
@@ -181,13 +187,15 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Site ID (required for allauth)
-SITE_ID = config.get_int('django.site_id', 1, 'SITE_ID')
+# Uses DJANGO_SITE_ID env var or config.yaml django.site_id
+SITE_ID = config.get_int('django.site_id', 1)
 
 # allauth Configuration
 ACCOUNT_AUTHENTICATION_METHOD = 'email'  # Use email instead of username
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_EMAIL_VERIFICATION = config.get('authentication.account_email_verification', 'mandatory', 'ACCOUNT_EMAIL_VERIFICATION')
+# Uses AUTHENTICATION_ACCOUNT_EMAIL_VERIFICATION env var or config.yaml
+ACCOUNT_EMAIL_VERIFICATION = config.get('authentication.account_email_verification', 'mandatory')
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_SIGNUP_EMAIL_ENTER_TWICE = True
 ACCOUNT_SESSION_REMEMBER = True
@@ -201,18 +209,20 @@ LOGOUT_REDIRECT_URL = config.get('authentication.logout_redirect_url', '/')
 SOCIALACCOUNT_PROVIDERS = {}
 
 # Google OAuth
+# Uses SOCIAL_AUTH_GOOGLE_ENABLED, SOCIAL_AUTH_GOOGLE_CLIENT_ID, etc. env vars or config.yaml
 if config.get_bool('social_auth.google.enabled', False):
     SOCIALACCOUNT_PROVIDERS['google'] = {
         'SCOPE': ['profile', 'email'],
         'AUTH_PARAMS': {'access_type': 'online'},
         'APP': {
-            'client_id': config.get('social_auth.google.client_id', '', 'GOOGLE_CLIENT_ID'),
-            'secret': config.get('social_auth.google.secret', '', 'GOOGLE_SECRET'),
+            'client_id': config.get('social_auth.google.client_id', ''),
+            'secret': config.get('social_auth.google.secret', ''),
             'key': '',
         }
     }
 
 # Facebook OAuth
+# Uses SOCIAL_AUTH_FACEBOOK_ENABLED, SOCIAL_AUTH_FACEBOOK_APP_ID, etc. env vars or config.yaml
 if config.get_bool('social_auth.facebook.enabled', False):
     SOCIALACCOUNT_PROVIDERS['facebook'] = {
         'METHOD': 'oauth2',
@@ -225,32 +235,34 @@ if config.get_bool('social_auth.facebook.enabled', False):
         ],
         'EXCHANGE_TOKEN': True,
         'APP': {
-            'client_id': config.get('social_auth.facebook.app_id', '', 'FACEBOOK_APP_ID'),
-            'secret': config.get('social_auth.facebook.app_secret', '', 'FACEBOOK_APP_SECRET'),
+            'client_id': config.get('social_auth.facebook.app_id', ''),
+            'secret': config.get('social_auth.facebook.app_secret', ''),
             'key': '',
         }
     }
 
 # GitHub OAuth
+# Uses SOCIAL_AUTH_GITHUB_ENABLED, SOCIAL_AUTH_GITHUB_CLIENT_ID, etc. env vars or config.yaml
 if config.get_bool('social_auth.github.enabled', False):
     SOCIALACCOUNT_PROVIDERS['github'] = {
         'SCOPE': ['user', 'user:email'],
         'APP': {
-            'client_id': config.get('social_auth.github.client_id', '', 'GITHUB_CLIENT_ID'),
-            'secret': config.get('social_auth.github.secret', '', 'GITHUB_SECRET'),
+            'client_id': config.get('social_auth.github.client_id', ''),
+            'secret': config.get('social_auth.github.secret', ''),
             'key': '',
         }
     }
 
 # Celery Configuration
-CELERY_BROKER_URL = config.get('celery.broker_url', 'redis://redis:6379/0', 'CELERY_BROKER_URL')
-CELERY_RESULT_BACKEND = config.get('celery.result_backend', 'redis://redis:6379/0', 'CELERY_RESULT_BACKEND')
+# Uses CELERY_BROKER_URL, CELERY_RESULT_BACKEND, etc. env vars or config.yaml
+CELERY_BROKER_URL = config.get('celery.broker_url', 'redis://redis:6379/0')
+CELERY_RESULT_BACKEND = config.get('celery.result_backend', 'redis://redis:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = config.get_int('celery.task_time_limit', 1800, None)  # seconds
-CELERY_TASK_SOFT_TIME_LIMIT = config.get_int('celery.task_soft_time_limit', 1500, None)  # seconds
-CELERY_WORKER_PREFETCH_MULTIPLIER = config.get_int('celery.worker_prefetch_multiplier', 1, None)
-CELERY_WORKER_MAX_TASKS_PER_CHILD = config.get_int('celery.worker_max_tasks_per_child', 1000, None)
+CELERY_TASK_TIME_LIMIT = config.get_int('celery.task_time_limit', 1800)  # seconds
+CELERY_TASK_SOFT_TIME_LIMIT = config.get_int('celery.task_soft_time_limit', 1500)  # seconds
+CELERY_WORKER_PREFETCH_MULTIPLIER = config.get_int('celery.worker_prefetch_multiplier', 1)
+CELERY_WORKER_MAX_TASKS_PER_CHILD = config.get_int('celery.worker_max_tasks_per_child', 1000)
