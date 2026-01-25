@@ -20,6 +20,22 @@ services:
     networks:
       - gallery_network
 
+  redis:
+    image: redis:7-alpine
+    container_name: gallery_redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gallery_network
+
   seaweedfs:
     image: chrislusf/seaweedfs:latest
     container_name: gallery_seaweedfs
@@ -43,11 +59,14 @@ services:
   web:
     build: .
     container_name: gallery_web
-    command: sh -c "python manage.py migrate --noinput && gunicorn --bind 0.0.0.0:8000 --workers 4 --timeout 120 config.wsgi:application"
+    command: sh -c "python manage.py migrate --noinput && gunicorn --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-4} --timeout ${GUNICORN_TIMEOUT:-120} config.wsgi:application"
     volumes:
       - ./app:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/media
+    configs:
+      - source: gallery_config
+        target: /app/config.yaml
     ports:
       - "8000:8000"
     env_file:
@@ -55,8 +74,74 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       seaweedfs:
         condition: service_healthy
+    networks:
+      - gallery_network
+
+  celery:
+    build: .
+    container_name: gallery_celery
+    command: celery -A config worker --loglevel=info --concurrency=${CELERY_WORKER_CONCURRENCY:-4}
+    volumes:
+      - ./app:/app
+      - media_volume:/app/media
+    configs:
+      - source: gallery_config
+        target: /app/config.yaml
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gallery_network
+
+  celery-beat:
+    build: .
+    container_name: gallery_celery_beat
+    command: celery -A config beat --loglevel=info
+    volumes:
+      - ./app:/app
+    configs:
+      - source: gallery_config
+        target: /app/config.yaml
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gallery_network
+
+  flower:
+    build: .
+    container_name: gallery_flower
+    command: >
+      sh -c "
+      if [ -n \"$$FLOWER_USERNAME\" ] && [ -n \"$$FLOWER_PASSWORD\" ]; then
+        celery -A config flower --port=5555 --basic_auth=$$FLOWER_USERNAME:$$FLOWER_PASSWORD
+      else
+        echo 'ERROR: FLOWER_USERNAME and FLOWER_PASSWORD must be set for security!'
+        exit 1
+      fi
+      "
+    ports:
+      - "${FLOWER_PORT:-5555}:5555"
+    configs:
+      - source: gallery_config
+        target: /app/config.yaml
+    env_file:
+      - .env
+    depends_on:
+      - celery
+      - redis
     networks:
       - gallery_network
 
@@ -72,14 +157,20 @@ services:
       - media_volume:/media:ro
     depends_on:
       - web
+      - flower
     networks:
       - gallery_network
 
 volumes:
   postgres_data:
+  redis_data:
   seaweedfs_data:
   static_volume:
   media_volume:
+
+configs:
+  gallery_config:
+    file: ./config.yaml
 
 networks:
   gallery_network:
