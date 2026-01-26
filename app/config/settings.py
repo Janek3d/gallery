@@ -54,6 +54,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',  # Required for allauth
     
+    # Third-party
+    'rest_framework',  # Django REST Framework
+    
     # allauth
     'allauth',
     'allauth.account',
@@ -61,6 +64,9 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.facebook',
     'allauth.socialaccount.providers.github',
+    
+    # Local apps
+    'gallery',
 ]
 
 # Add storages if using S3/SeaweedFS
@@ -278,3 +284,20 @@ CELERY_TASK_ROUTES = {
 CELERY_TASK_DEFAULT_QUEUE = 'cpu'  # Default queue for tasks without explicit routing
 CELERY_TASK_DEFAULT_EXCHANGE = 'tasks'
 CELERY_TASK_DEFAULT_ROUTING_KEY = 'cpu'
+
+# Gallery App Configuration
+GALLERY_MEDIA_BASE_URL = config.get('gallery.media_base_url', '/media')
+GALLERY_SIGNED_URL_SECRET = config.get('gallery.signed_url_secret', None)  # Optional, falls back to SECRET_KEY
+GALLERY_SIGNED_URL_EXPIRES_IN = config.get_int('gallery.signed_url_expires_in', 3600)  # 1 hour default
+
+# REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 50,
+}
