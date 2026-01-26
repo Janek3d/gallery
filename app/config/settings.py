@@ -17,6 +17,8 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 # BASE_DIR points to /app (where manage.py is located)
 BASE_DIR = Path(__file__).resolve().parent.parent
+# Project root (one level up from app/)
+PROJECT_ROOT = BASE_DIR.parent
 
 # Load environment variables from .env file
 # Try project root first (for local dev), then fall back to BASE_DIR
@@ -91,7 +93,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],  # Add app-level templates directory (app/templates)
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
