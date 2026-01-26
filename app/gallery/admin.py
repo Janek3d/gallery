@@ -17,7 +17,7 @@ class GalleryAdmin(admin.ModelAdmin):
     list_filter = ['gallery_type', 'is_favorite', 'tags', 'created_at', 'deleted_at']
     search_fields = ['name', 'description', 'owner__username', 'owner__email', 'tags__name']
     readonly_fields = ['created_at', 'updated_at']
-    filter_horizontal = ['shared_with', 'tags']
+    # filter_horizontal = ['shared_with', 'tags']
 
 
 @admin.register(Album)

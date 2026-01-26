@@ -199,13 +199,16 @@ AUTHENTICATION_BACKENDS = [
 SITE_ID = config.get_int('django.site_id', 1)
 
 # allauth Configuration
-ACCOUNT_AUTHENTICATION_METHOD = 'email'  # Use email instead of username
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = False
+# ACCOUNT_AUTHENTICATION_METHOD = 'email'  # Use email instead of username # Also deprecated
+ACCOUNT_LOGIN_METHODS = {'email'}
+# ACCOUNT_EMAIL_REQUIRED = True # deprecated
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'email2*', 'password1*', 'password2*']
+# ACCOUNT_USERNAME_REQUIRED = False
 # Uses AUTHENTICATION_ACCOUNT_EMAIL_VERIFICATION env var or config.yaml
 ACCOUNT_EMAIL_VERIFICATION = config.get('authentication.account_email_verification', 'mandatory')
 ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_SIGNUP_EMAIL_ENTER_TWICE = True
+# ACCOUNT_SIGNUP_EMAIL_ENTER_TWICE = True # Deprecated
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'email2*', 'password1*', 'password2*']
 ACCOUNT_SESSION_REMEMBER = True
 
 # Login/Logout URLs
