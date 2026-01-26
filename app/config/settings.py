@@ -266,3 +266,15 @@ CELERY_TASK_TIME_LIMIT = config.get_int('celery.task_time_limit', 1800)  # secon
 CELERY_TASK_SOFT_TIME_LIMIT = config.get_int('celery.task_soft_time_limit', 1500)  # seconds
 CELERY_WORKER_PREFETCH_MULTIPLIER = config.get_int('celery.worker_prefetch_multiplier', 1)
 CELERY_WORKER_MAX_TASKS_PER_CHILD = config.get_int('celery.worker_max_tasks_per_child', 1000)
+
+# Celery Queue Configuration
+# Separate queues for CPU and GPU tasks
+CELERY_TASK_ROUTES = {
+    # Route GPU-intensive tasks (YOLO, PaddleOCR) to GPU queue
+    # Example: 'gallery.tasks.process_image_with_gpu': {'queue': 'gpu'},
+    # Route CPU tasks to CPU queue
+    # Example: 'gallery.tasks.process_metadata': {'queue': 'cpu'},
+}
+CELERY_TASK_DEFAULT_QUEUE = 'cpu'  # Default queue for tasks without explicit routing
+CELERY_TASK_DEFAULT_EXCHANGE = 'tasks'
+CELERY_TASK_DEFAULT_ROUTING_KEY = 'cpu'

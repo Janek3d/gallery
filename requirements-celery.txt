@@ -1,0 +1,17 @@
+# PyTorch with CUDA 12.1 support (for YOLO)
+# Note: PyTorch requires special index URL, install separately or use --extra-index-url
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch
+torchvision
+torchaudio
+
+# YOLO (ultralytics)
+ultralytics
+
+# PaddleOCR with GPU support
+paddlepaddle-gpu
+paddleocr
+
+# OpenCV for image processing
+opencv-python-headless
+opencv-contrib-python-headless

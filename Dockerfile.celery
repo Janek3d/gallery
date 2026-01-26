@@ -1,0 +1,61 @@
+# Dockerfile for Celery worker with NVIDIA GPU support
+# For YOLO object recognition and PaddleOCR
+# Optimized for Windows WSL
+
+# Use NVIDIA CUDA base image with Python 3.11 (Python 3.14 not available in CUDA images yet)
+# Using CUDA 12.1 runtime with cuDNN for deep learning frameworks
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Install Python 3.11 and system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    python3-pip \
+    postgresql-client \
+    libpq-dev \
+    gcc \
+    g++ \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    wget \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create symlink for python and pip
+RUN ln -s /usr/bin/python3.11 /usr/bin/python && \
+    ln -s /usr/bin/pip3 /usr/bin/pip
+
+# Set work directory
+WORKDIR /app
+
+# Upgrade pip
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Copy and install GPU-specific dependencies
+COPY requirements-celery.txt ./
+RUN pip install --no-cache-dir -r requirements-celery.txt
+
+# Install project dependencies
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir -e .
+
+# Copy Django app
+COPY app/ .
+
+# Create a non-root user
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Default command (can be overridden in docker-compose)
+CMD ["celery", "-A", "config", "worker", "--loglevel=info", "--concurrency=2"]
