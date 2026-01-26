@@ -84,7 +84,7 @@ services:
   celery:
     build: .
     container_name: gallery_celery
-    command: celery -A config worker --loglevel=info --concurrency=${CELERY_WORKER_CONCURRENCY:-4}
+    command: celery -A config worker --loglevel=info --concurrency=${CELERY_CPU_WORKER_CONCURRENCY:-4} --queues=cpu
     volumes:
       - ./app:/app
       - media_volume:/app/media
@@ -93,6 +93,38 @@ services:
         target: /app/config.yaml
     env_file:
       - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gallery_network
+
+  celery-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile.celery
+    container_name: gallery_celery_gpu
+    command: celery -A config worker --loglevel=info --concurrency=${CELERY_GPU_WORKER_CONCURRENCY:-2} --queues=gpu
+    volumes:
+      - ./app:/app
+      - media_volume:/app/media
+    configs:
+      - source: gallery_config
+        target: /app/config.yaml
+    env_file:
+      - .env
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     depends_on:
       db:
         condition: service_healthy
@@ -141,6 +173,7 @@ services:
       - .env
     depends_on:
       - celery
+      - celery-gpu
       - redis
     networks:
       - gallery_network
