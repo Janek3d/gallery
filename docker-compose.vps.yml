@@ -1,8 +1,6 @@
-# Main docker-compose.yml - Use for local development with all services
-# For production split deployment:
-# - VPS: Use docker-compose.vps.yml
-# - Local GPU: Use docker-compose.gpu.yml
-# See DEPLOYMENT.md for details
+# Docker Compose for VPS (Cloud Server)
+# Runs: web, db, redis, celery (CPU), celery-beat, flower, nginx, seaweedfs
+# Does NOT run: celery-gpu (runs on local machine)
 
 version: '3.8'
 
@@ -18,6 +16,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "${DB_PORT:-5432}:5432"
+      # PostgreSQL accessible via WireGuard VPN (10.0.0.1:5432)
+      # No external port exposure needed - secured via WireGuard
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s
@@ -31,9 +31,11 @@ services:
     container_name: gallery_redis
     ports:
       - "${REDIS_PORT:-6379}:6379"
+      # Redis accessible via WireGuard VPN (10.0.0.1:6379)
+      # No external port exposure needed - secured via WireGuard
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --bind 0.0.0.0
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -107,38 +109,6 @@ services:
     networks:
       - gallery_network
 
-  celery-gpu:
-    build:
-      context: .
-      dockerfile: Dockerfile.celery
-    container_name: gallery_celery_gpu
-    command: celery -A config worker --loglevel=info --concurrency=${CELERY_GPU_WORKER_CONCURRENCY:-2} --queues=gpu
-    volumes:
-      - ./app:/app
-      - media_volume:/app/media
-    configs:
-      - source: gallery_config
-        target: /app/config.yaml
-    env_file:
-      - .env
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - gallery_network
-
   celery-beat:
     build: .
     container_name: gallery_celery_beat
@@ -179,7 +149,6 @@ services:
       - .env
     depends_on:
       - celery
-      - celery-gpu
       - redis
     networks:
       - gallery_network
