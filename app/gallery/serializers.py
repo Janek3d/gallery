@@ -25,6 +25,8 @@ class TagListField(serializers.Field):
     
     def to_internal_value(self, data):
         """Convert list of tag names to Tag objects"""
+        if data is None:
+            return []
         if not isinstance(data, list):
             raise serializers.ValidationError("Tags must be a list of tag names")
         return data
@@ -149,7 +151,7 @@ class GallerySerializer(serializers.ModelSerializer):
     """Serializer for Gallery model"""
     owner_username = serializers.CharField(source='owner.username', read_only=True)
     album_count = serializers.SerializerMethodField()
-    tags = TagListField()
+    tags = TagListField(required=False, allow_null=True)
     shared_with_users = GalleryShareSerializer(source='shares', many=True, read_only=True)
     
     class Meta:

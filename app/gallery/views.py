@@ -78,9 +78,9 @@ class GalleryViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def share(self, request, pk=None):
         """Share gallery with users by email"""
-        gallery = self.get_object()
+        gallery = get_object_or_404(Gallery, pk=pk, deleted_at__isnull=True)
         
-        # Check permission
+        # Check permission - only owner can share
         if gallery.owner != request.user:
             return Response(
                 {'error': 'Only gallery owner can share'},

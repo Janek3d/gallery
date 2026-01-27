@@ -43,9 +43,8 @@ CACHES = {
 # Disable email sending during tests
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
 
-# Use in-memory session backend for tests
-SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-SESSION_CACHE_ALIAS = 'default'
+# Use database session backend for tests (more reliable than cache with DummyCache)
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 # Disable logging during tests (optional, for cleaner output)
 LOGGING_CONFIG = None

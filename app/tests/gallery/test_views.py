@@ -32,7 +32,7 @@ class TestGalleryAPIViewSet:
         url = reverse('gallery:gallery-list')
         response = authenticated_api_client.get(url)
         assert response.status_code == status.HTTP_200_OK
-        assert isinstance(response.data, list)
+        assert isinstance(response.data["results"], list)
     
     def test_create_gallery_api(self, authenticated_api_client, user):
         """Test creating a gallery via API."""

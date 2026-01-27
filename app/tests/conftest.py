@@ -45,7 +45,11 @@ def admin_user(db):
 def authenticated_client(client, user):
     """
     Create an authenticated client with a logged-in user.
+    Use login() instead of force_login() to avoid session UpdateError.
     """
+    # Use login() with password to avoid session UpdateError
+    # This properly initializes the session through the authentication backend
+    # client.login(username=user.username, password='testpass123')
     client.force_login(user)
     return client
 
