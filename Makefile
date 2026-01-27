@@ -1,4 +1,4 @@
-.PHONY: help install install-dev sync lock test test-cov test-fast lint format clean runserver migrate makemigrations shell superuser collectstatic docker-up docker-down docker-logs docker-build docker-ps celery celery-beat celery-flower
+.PHONY: help install install-dev sync lock test test-cov test-fast lint format clean runserver migrate makemigrations shell superuser collectstatic docker-up docker-down docker-logs docker-build docker-ps celery celery-beat celery-flower seaweedfs-auth
 
 # Default target
 help:
@@ -27,6 +27,7 @@ help:
 	@echo "  make celery           - Run Celery worker"
 	@echo "  make celery-beat      - Run Celery beat scheduler"
 	@echo "  make celery-flower    - Run Flower (Celery monitoring)"
+	@echo "  make seaweedfs-auth   - Create SeaweedFS S3 access keys"
 
 # Installation
 install:
@@ -156,3 +157,8 @@ celery-beat:
 
 celery-flower:
 	uv run celery -A config.celery flower
+
+# SeaweedFS commands
+seaweedfs-auth:
+	@echo "Creating SeaweedFS S3 access keys..."
+	@uv run python scripts/setup_seaweedfs_auth.py --endpoint ${ENDPOINT:-http://localhost:8333} --output-format env
