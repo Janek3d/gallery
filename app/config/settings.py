@@ -11,6 +11,9 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import json
+import logging
+from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -27,7 +30,7 @@ load_dotenv(BASE_DIR / '.env', override=False)  # App directory (fallback)
 
 # Load YAML configuration
 from .config_loader import get_config_loader
-config = get_config_loader()
+config = get_config_loader(os.getenv('CONFIG_PATH', None))
 
 
 # Quick-start development settings - unsuitable for production
@@ -42,7 +45,7 @@ SECRET_KEY = config.get('django.secret_key', 'django-insecure-z&x2fgjdjshurb8*p9
 DEBUG = config.get_bool('django.debug', False)
 
 # Uses DJANGO_ALLOWED_HOSTS env var or config.yaml django.allowed_hosts
-ALLOWED_HOSTS = config.get_list('django.allowed_hosts', ['localhost', '127.0.0.1'])
+ALLOWED_HOSTS = config.get_list('django.allowed_hosts', ['localhost', '127.0.0.1', "0.0.0.0"])
 
 
 # Application definition
@@ -158,11 +161,48 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = config.get('static_files.static_url', '/static/')
-STATIC_ROOT = BASE_DIR / config.get('static_files.static_root', 'staticfiles')
+def _resolve_root_path(value: str, base_dir: Path) -> Path:
+    """
+    Resolve a filesystem path from config/env.
 
-MEDIA_URL = config.get('static_files.media_url', '/media/')
-MEDIA_ROOT = BASE_DIR / config.get('static_files.media_root', 'media')
+    - If `value` is absolute, use it as-is.
+    - If `value` is relative, resolve it under `base_dir`.
+    """
+    p = Path(value)
+    return p if p.is_absolute() else (base_dir / p)
+
+def _normalize_url_prefix(value: str, default: str) -> str:
+    """
+    Normalize URL prefixes like STATIC_URL and MEDIA_URL.
+
+    Ensures:
+    - starts with '/'
+    - ends with '/'
+    """
+    v = (value or "").strip()
+    if not v:
+        v = default
+    if not v.startswith("/"):
+        v = "/" + v
+    if not v.endswith("/"):
+        v = v + "/"
+    return v
+
+
+# Allow env vars to override config.yaml (useful in Docker/K8s)
+STATIC_URL = _normalize_url_prefix(
+    os.getenv('STATIC_URL', config.get('static_files.static_url', '/static/')),
+    default='/static/',
+)
+STATIC_ROOT_VALUE = os.getenv('STATIC_ROOT', config.get('static_files.static_root', 'staticfiles'))
+STATIC_ROOT = _resolve_root_path(STATIC_ROOT_VALUE, BASE_DIR)
+
+MEDIA_URL = _normalize_url_prefix(
+    os.getenv('MEDIA_URL', config.get('static_files.media_url', '/media/')),
+    default='/media/',
+)
+MEDIA_ROOT_VALUE = os.getenv('MEDIA_ROOT', config.get('static_files.media_root', 'media'))
+MEDIA_ROOT = _resolve_root_path(MEDIA_ROOT_VALUE, BASE_DIR)
 
 # SeaweedFS / S3 Storage Configuration
 if USE_S3:
@@ -305,4 +345,145 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 50,
+}
+
+# Structured Logging Configuration
+class JSONFormatter(logging.Formatter):
+    """Custom JSON formatter for structured logging."""
+    
+    def format(self, record):
+        """Format log record as JSON."""
+        log_data = {
+            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'level': record.levelname,
+            'logger': record.name,
+            'message': record.getMessage(),
+            'module': record.module,
+            'function': record.funcName,
+            'line': record.lineno,
+        }
+        
+        # Add exception info if present
+        if record.exc_info:
+            log_data['exception'] = self.formatException(record.exc_info)
+        
+        # Add extra fields from record
+        if hasattr(record, 'user_id'):
+            log_data['user_id'] = record.user_id
+        if hasattr(record, 'request_id'):
+            log_data['request_id'] = record.request_id
+        if hasattr(record, 'ip_address'):
+            log_data['ip_address'] = record.ip_address
+        if hasattr(record, 'path'):
+            log_data['path'] = record.path
+        if hasattr(record, 'method'):
+            log_data['method'] = record.method
+        if hasattr(record, 'status_code'):
+            log_data['status_code'] = record.status_code
+        if hasattr(record, 'duration'):
+            log_data['duration'] = record.duration
+        
+        # Add any other extra fields
+        for key, value in record.__dict__.items():
+            if key not in [
+                'name', 'msg', 'args', 'created', 'filename', 'funcName',
+                'levelname', 'levelno', 'lineno', 'module', 'msecs',
+                'message', 'pathname', 'process', 'processName', 'relativeCreated',
+                'thread', 'threadName', 'exc_info', 'exc_text', 'stack_info',
+                'asctime', 'taskName', 'task_id'
+            ]:
+                log_data[key] = value
+        
+        # Never let logging crash the app: coerce unknown objects (e.g. request/socket) to string.
+        return json.dumps(log_data, ensure_ascii=False, default=str)
+
+# Get log level from config or environment, default to INFO
+LOG_LEVEL = config.get('logging.level', os.getenv('LOG_LEVEL', 'INFO')).upper()
+LOG_FILE = config.get('logging.file', os.getenv('LOG_FILE', None))
+LOG_FILE_MAX_BYTES = config.get_int('logging.file_max_bytes', 10 * 1024 * 1024)  # 10MB
+LOG_FILE_BACKUP_COUNT = config.get_int('logging.file_backup_count', 5)
+
+# Configure logging handlers
+handlers = {
+    'console': {
+        'class': 'logging.StreamHandler',
+        'formatter': 'json',
+        'level': LOG_LEVEL,
+    },
+}
+
+# Add file handler if log file is configured
+if LOG_FILE:
+    handlers['file'] = {
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': LOG_FILE,
+        'maxBytes': LOG_FILE_MAX_BYTES,
+        'backupCount': LOG_FILE_BACKUP_COUNT,
+        'formatter': 'json',
+        'level': LOG_LEVEL,
+    }
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'json': {
+            '()': JSONFormatter,
+        },
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': handlers,
+    'root': {
+        'handlers': list(handlers.keys()),
+        'level': LOG_LEVEL,
+    },
+    'loggers': {
+        'django': {
+            'handlers': list(handlers.keys()),
+            'level': config.get('logging.django_level', os.getenv('DJANGO_LOG_LEVEL', 'INFO')).upper(),
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': list(handlers.keys()),
+            'level': config.get('logging.django_request_level', os.getenv('DJANGO_REQUEST_LOG_LEVEL', 'WARNING')).upper(),
+            'propagate': False,
+        },
+        'django.server': {
+            'handlers': list(handlers.keys()),
+            'level': config.get('logging.django_server_level', os.getenv('DJANGO_SERVER_LOG_LEVEL', 'INFO')).upper(),
+            'propagate': False,
+        },
+        'django.db.backends': {
+            'handlers': list(handlers.keys()),
+            'level': config.get('logging.django_db_level', os.getenv('DJANGO_DB_LOG_LEVEL', 'WARNING')).upper(),
+            'propagate': False,
+        },
+        'gallery': {
+            'handlers': list(handlers.keys()),
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'celery': {
+            'handlers': list(handlers.keys()),
+            'level': config.get('logging.celery_level', os.getenv('CELERY_LOG_LEVEL', 'INFO')).upper(),
+            'propagate': False,
+        },
+        'boto3': {
+            'handlers': list(handlers.keys()),
+            'level': config.get('logging.boto3_level', os.getenv('BOTO3_LOG_LEVEL', 'WARNING')).upper(),
+            'propagate': False,
+        },
+        'botocore': {
+            'handlers': list(handlers.keys()),
+            'level': config.get('logging.botocore_level', os.getenv('BOTOCORE_LOG_LEVEL', 'WARNING')).upper(),
+            'propagate': False,
+        },
+    },
 }

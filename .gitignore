@@ -42,7 +42,13 @@ config.yaml
 Thumbs.db
 
 # Docker
-.dockerignore
+
+# Celery beat schedule (runtime files)
+celerybeat-schedule
+celerybeat-schedule*
+celerybeat-schedule.*
+**/celerybeat-schedule
+**/celerybeat-schedule.*
 
 # Test artifacts
 .coverage

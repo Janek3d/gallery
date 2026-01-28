@@ -18,7 +18,7 @@ class ConfigLoader:
         Args:
             config_path: Path to YAML config file. If None, tries common locations.
         """
-        self.config_path = config_path or self._find_config_file()
+        self.config_path = (Path(config_path) if isinstance(config_path, str) else config_path) or self._find_config_file()
         self.config: Dict[str, Any] = {}
         self._load_config()
     
@@ -164,9 +164,9 @@ class ConfigLoader:
 _config_loader: Optional[ConfigLoader] = None
 
 
-def get_config_loader() -> ConfigLoader:
+def get_config_loader(path: Optional[Path|str] = None) -> ConfigLoader:
     """Get or create the global config loader instance."""
     global _config_loader
     if _config_loader is None:
-        _config_loader = ConfigLoader()
+        _config_loader = ConfigLoader(path)
     return _config_loader

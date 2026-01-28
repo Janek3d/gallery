@@ -71,3 +71,19 @@ static_files:
 server:
   gunicorn_workers: 4
   gunicorn_timeout: 120
+
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+  # Optional: Log file path (enables file logging with rotation)
+  # file: "/var/log/gallery/app.log"
+  file_max_bytes: 10485760  # 10MB
+  file_backup_count: 5
+  # Per-logger levels (optional, defaults to 'level' above)
+  django_level: "INFO"
+  django_request_level: "WARNING"
+  django_server_level: "INFO"
+  django_db_level: "WARNING"
+  celery_level: "INFO"
+  boto3_level: "WARNING"
+  botocore_level: "WARNING"
