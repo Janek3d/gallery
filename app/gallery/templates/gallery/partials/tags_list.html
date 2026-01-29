@@ -2,7 +2,7 @@
     {% for tag in object.tags.all %}
         <span class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded">
             {{ tag.name }}
-            <button hx-delete="{% url 'gallery:gallery_remove_tag' object_id %}"
+            <button type="button" hx-post="{% url 'gallery:gallery_remove_tag' object_id %}"
                     hx-vals='{"tag": "{{ tag.name }}"}'
                     hx-target="closest span"
                     hx-swap="outerHTML"
@@ -31,7 +31,7 @@
     {% for tag in object.tags.all %}
         <span class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded">
             {{ tag.name }}
-            <button hx-delete="{% url 'gallery:album_remove_tag' object_id %}"
+            <button type="button" hx-post="{% url 'gallery:album_remove_tag' object_id %}"
                     hx-vals='{"tag": "{{ tag.name }}"}'
                     hx-target="closest span"
                     hx-swap="outerHTML"

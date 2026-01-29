@@ -37,7 +37,7 @@
                 {% for tag in gallery.tags.all %}
                     <span class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded">
                         {{ tag.name }}
-                        <button hx-delete="{% url 'gallery:gallery_remove_tag' gallery.id %}"
+                        <button type="button" hx-post="{% url 'gallery:gallery_remove_tag' gallery.id %}"
                                 hx-vals='{"tag": "{{ tag.name }}"}'
                                 hx-target="closest span"
                                 hx-swap="outerHTML"

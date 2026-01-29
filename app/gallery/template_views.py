@@ -22,40 +22,69 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def gallery_list(request):
-    """List all galleries for the user"""
+    """List all galleries for the user; when search is present, also return albums and pictures matching the query."""
     user = request.user
     shared = request.GET.get('shared') == '1'
-    
+    search = request.GET.get('search', '').strip()
+
     if shared:
-        galleries = Gallery.objects.filter(
-            shared_with=user,
-            deleted_at__isnull=True
-        ).distinct()
+        gallery_qs = Gallery.objects.filter(shared_with=user, deleted_at__isnull=True).distinct()
     else:
-        galleries = Gallery.objects.filter(
-            owner=user,
-            deleted_at__isnull=True
-        )
-    
-    # Filter by search
-    search = request.GET.get('search')
+        gallery_qs = Gallery.objects.filter(owner=user, deleted_at__isnull=True)
+
     if search:
-        galleries = galleries.filter(
-            Q(name__icontains=search) | 
-            Q(description__icontains=search) |
-            Q(tags__name__icontains=search)
+        gallery_qs = gallery_qs.filter(
+            Q(name__icontains=search)
+            | Q(description__icontains=search)
+            | Q(tags__name__icontains=search)
         ).distinct()
-    
-    # Filter by type
+
     gallery_type = request.GET.get('gallery_type')
     if gallery_type:
-        galleries = galleries.filter(gallery_type=gallery_type)
-    
-    # Prefetch related
-    galleries = galleries.prefetch_related('tags', 'albums').order_by('-created_at')
-    
+        gallery_qs = gallery_qs.filter(gallery_type=gallery_type)
+
+    galleries = gallery_qs.annotate(
+        album_count=Count('albums', filter=Q(albums__deleted_at__isnull=True), distinct=True)
+    ).prefetch_related('tags', 'albums').order_by('-created_at')
+
+    search_albums = None
+    search_pictures = None
+    if search:
+        if shared:
+            album_qs = Album.objects.filter(gallery__shared_with=user, deleted_at__isnull=True)
+        else:
+            album_qs = Album.objects.filter(gallery__owner=user, deleted_at__isnull=True)
+        search_albums = album_qs.filter(
+            Q(name__icontains=search)
+            | Q(description__icontains=search)
+            | Q(tags__name__icontains=search)
+        ).distinct().select_related('gallery').prefetch_related('tags').order_by('-created_at')
+
+        if shared:
+            picture_qs = Picture.objects.filter(album__gallery__shared_with=user, deleted_at__isnull=True)
+        else:
+            picture_qs = Picture.objects.filter(album__gallery__owner=user, deleted_at__isnull=True)
+        search_pictures = picture_qs.filter(
+            Q(title__icontains=search)
+            | Q(description__icontains=search)
+            | Q(ocr_text__icontains=search)
+            | Q(tags__name__icontains=search)
+        ).distinct().select_related('album', 'album__gallery').prefetch_related('tags').order_by('-uploaded_at')
+        for picture in search_pictures:
+            if picture.seaweedfs_file_id:
+                try:
+                    signed = generate_signed_url(picture.seaweedfs_file_id)
+                    picture.signed_url = signed['url']
+                except Exception:
+                    picture.signed_url = None
+            else:
+                picture.signed_url = None
+
     context = {
         'galleries': galleries,
+        'search_query': search or None,
+        'search_albums': search_albums,
+        'search_pictures': search_pictures,
     }
     return render(request, 'gallery/gallery_list.html', context)
 
@@ -189,7 +218,7 @@ def gallery_remove_tag(request, pk):
         pk=pk
     )
     
-    # HTMX sends DELETE but Django forms send POST
+    # HTMX sends POST with hx-vals in body (DELETE would not populate request.POST)
     tag_name = request.POST.get('tag', '').strip()
     if tag_name:
         gallery.remove_tag(tag_name)

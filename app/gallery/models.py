@@ -225,7 +225,7 @@ class Gallery(models.Model):
                 self.tags.remove(tag)
                 tag.decrement_usage()
         except Tag.DoesNotExist:
-            pass
+            raise
     
     @classmethod
     def search_by_tags(cls, tag_names, user=None):
