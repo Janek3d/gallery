@@ -102,6 +102,12 @@ class PictureUploadForm(forms.ModelForm):
         help_text="ZIP or TAR archive containing images (up to 100MB)",
         widget=forms.FileInput(attrs={'accept': '.zip,.tar,.tar.gz,.tgz'}),
     )
+    extract_with_ai = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Extract text and objects (YOLO + PaddleOCR)",
+        help_text="Run object detection (YOLO → ai_tags) and OCR (PaddleOCR → ocr_text) on uploaded images.",
+    )
 
     class Meta:
         model = Picture

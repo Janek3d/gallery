@@ -338,7 +338,7 @@ CELERY_WORKER_MAX_TASKS_PER_CHILD = config.get_int('celery.worker_max_tasks_per_
 # Separate queues for CPU and GPU tasks
 CELERY_TASK_ROUTES = {
     # Route GPU-intensive tasks (YOLO, PaddleOCR) to GPU queue
-    # Example: 'gallery.tasks.process_image_with_gpu': {'queue': 'gpu'},
+    'gallery.tasks.process_picture_ai': {'queue': 'gpu'},
     # Route CPU tasks to CPU queue
     # Example: 'gallery.tasks.process_metadata': {'queue': 'cpu'},
 }
