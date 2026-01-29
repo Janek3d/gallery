@@ -23,7 +23,9 @@ urlpatterns = [
     path('', template_views.gallery_list, name='gallery_list'),
     path('galleries/create/', template_views.gallery_create, name='gallery_create'),
     path('galleries/<int:pk>/', template_views.gallery_detail, name='gallery_detail'),
+    path('galleries/<int:pk>/delete/', template_views.gallery_delete, name='gallery_delete'),
     path('galleries/<int:pk>/edit/', template_views.gallery_edit, name='gallery_edit'),
+    path('galleries/delete/', template_views.gallery_bulk_delete, name='gallery_bulk_delete'),
     
     # HTMX endpoints for galleries
     path('galleries/<int:pk>/toggle-favorite/', template_views.gallery_toggle_favorite, name='gallery_toggle_favorite'),
@@ -32,8 +34,10 @@ urlpatterns = [
     
     # Albums
     path('albums/<int:pk>/', template_views.album_detail, name='album_detail'),
+    path('albums/<int:pk>/delete/', template_views.album_delete, name='album_delete'),
     path('albums/<int:pk>/edit/', template_views.album_edit, name='album_edit'),
     path('galleries/<int:gallery_id>/albums/create/', template_views.album_create, name='album_create'),
+    path('galleries/<int:pk>/albums/delete/', template_views.album_bulk_delete, name='album_bulk_delete'),
     
     # HTMX endpoints for albums
     path('albums/<int:pk>/add-tag/', template_views.album_add_tag, name='album_add_tag'),

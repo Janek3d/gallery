@@ -4,7 +4,7 @@ Template-based views for Gallery app with HTMX support
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.template.loader import render_to_string
@@ -66,8 +66,10 @@ def gallery_detail(request, pk):
         pk=pk
     )
     
-    # Prefetch albums with pictures
-    albums = gallery.albums.filter(deleted_at__isnull=True).prefetch_related('pictures', 'tags')
+    # Prefetch albums with pictures; annotate with count of non-deleted pictures
+    albums = gallery.albums.filter(deleted_at__isnull=True).annotate(
+        picture_count=Count('pictures', filter=Q(pictures__deleted_at__isnull=True), distinct=True)
+    ).prefetch_related('pictures', 'tags')
     
     context = {
         'gallery': gallery,
@@ -189,6 +191,45 @@ def gallery_remove_tag(request, pk):
     
     # Return empty string to remove the tag element
     return HttpResponse('')
+
+
+@login_required
+@require_http_methods(["POST"])
+def gallery_delete(request, pk):
+    """Soft-delete a single gallery and redirect to gallery list."""
+    gallery = get_object_or_404(
+        Gallery.objects.filter(
+            Q(owner=request.user) | Q(shared_with=request.user),
+            deleted_at__isnull=True
+        ),
+        pk=pk
+    )
+    gallery.soft_delete()
+    messages.success(request, f'Gallery "{gallery.name}" deleted.')
+    return redirect('gallery:gallery_list')
+
+
+@login_required
+@require_http_methods(["POST"])
+def gallery_bulk_delete(request):
+    """Soft-delete selected galleries (bulk operation)."""
+    ids = request.POST.getlist('ids')
+    if not ids:
+        messages.warning(request, 'No galleries selected.')
+        return redirect('gallery:gallery_list')
+    galleries = Gallery.objects.filter(
+        Q(owner=request.user) | Q(shared_with=request.user),
+        deleted_at__isnull=True,
+        pk__in=ids
+    )
+    count = galleries.count()
+    for gallery in galleries:
+        gallery.soft_delete()
+    if count == 1:
+        messages.success(request, '1 gallery deleted.')
+    else:
+        messages.success(request, f'{count} galleries deleted.')
+    return redirect('gallery:gallery_list')
 
 
 @login_required
@@ -320,6 +361,49 @@ def album_remove_tag(request, pk):
     
     # Return empty string to remove the tag element
     return HttpResponse('')
+
+
+@login_required
+@require_http_methods(["POST"])
+def album_delete(request, pk):
+    """Soft-delete a single album and redirect to gallery."""
+    album = get_object_or_404(
+        Album.objects.filter(
+            Q(gallery__owner=request.user) | Q(gallery__shared_with=request.user),
+            deleted_at__isnull=True
+        ),
+        pk=pk
+    )
+    gallery_id = album.gallery_id
+    album.soft_delete()
+    messages.success(request, f'Album "{album.name}" deleted.')
+    return redirect('gallery:gallery_detail', pk=gallery_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def album_bulk_delete(request, pk):
+    """Soft-delete selected albums in a gallery (bulk operation)."""
+    gallery = get_object_or_404(
+        Gallery.objects.filter(
+            Q(owner=request.user) | Q(shared_with=request.user),
+            deleted_at__isnull=True
+        ),
+        pk=pk
+    )
+    ids = request.POST.getlist('ids')
+    if not ids:
+        messages.warning(request, 'No albums selected.')
+        return redirect('gallery:gallery_detail', pk=pk)
+    albums = gallery.albums.filter(deleted_at__isnull=True, pk__in=ids)
+    count = albums.count()
+    for album in albums:
+        album.soft_delete()
+    if count == 1:
+        messages.success(request, '1 album deleted.')
+    else:
+        messages.success(request, f'{count} albums deleted.')
+    return redirect('gallery:gallery_detail', pk=pk)
 
 
 def _process_uploaded_image(uploaded_file, album, form_cleaned_data):

@@ -29,7 +29,7 @@
                     {{ gallery.get_gallery_type_display }}
                 </span>
                 <span class="text-sm text-gray-500">Owner: {{ gallery.owner.username }}</span>
-                <span class="text-sm text-gray-500">{{ gallery.albums.count }} albums</span>
+                <span class="text-sm text-gray-500">{{ albums|length }} albums</span>
             </div>
             
             <!-- Tags (HTMX for removal) -->
@@ -70,6 +70,12 @@
                class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded">
                 Edit
             </a>
+            <form method="post" action="{% url 'gallery:gallery_delete' gallery.id %}" class="inline" onsubmit="return confirm('Delete this gallery and all its albums?');">
+                {% csrf_token %}
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                    Delete gallery
+                </button>
+            </form>
             <a href="{% url 'gallery:gallery_list' %}" 
                class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded">
                 Back
@@ -80,23 +86,37 @@
 
 <!-- Albums -->
 <div class="mb-6">
-    <div class="flex justify-between items-center mb-4">
-        <h2 class="text-2xl font-bold text-gray-900">Albums</h2>
-        <a href="{% url 'gallery:album_create' gallery.id %}" 
-           class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-            + New Album
-        </a>
-    </div>
-    
-    {% if gallery.albums.all %}
+    <form method="post" action="{% url 'gallery:album_bulk_delete' gallery.id %}" id="album-bulk-delete-form">
+        {% csrf_token %}
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+            <h2 class="text-2xl font-bold text-gray-900">Albums</h2>
+            <div class="flex gap-2 items-center">
+                <button type="submit" name="bulk_delete" value="1"
+                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                        form="album-bulk-delete-form"
+                        onclick="return confirm('Delete selected albums?');">
+                    Delete selected
+                </button>
+                <a href="{% url 'gallery:album_create' gallery.id %}" 
+                   class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    + New Album
+                </a>
+            </div>
+        </div>
+
+    {% if albums %}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {% for album in gallery.albums.all %}
-                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                    <a href="{% url 'gallery:album_detail' album.id %}">
+            {% for album in albums %}
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow relative group">
+                    <label class="absolute top-2 right-2 z-10 flex items-center gap-1 bg-white/90 rounded px-1 py-0.5 shadow cursor-pointer" onclick="event.stopPropagation();">
+                        <input type="checkbox" name="ids" value="{{ album.id }}" form="album-bulk-delete-form" class="rounded border-gray-300">
+                        <span class="text-xs text-gray-700">Select</span>
+                    </label>
+                    <a href="{% url 'gallery:album_detail' album.id %}" class="block">
                         <div class="p-4">
                             <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ album.name }}</h3>
                             <p class="text-gray-600 text-sm mb-2">{{ album.description|truncatewords:10 }}</p>
-                            <p class="text-xs text-gray-500">{{ album.pictures.count }} pictures</p>
+                            <p class="text-xs text-gray-500">{{ album.picture_count }} pictures</p>
                             
                             <!-- Album Tags -->
                             <div class="flex flex-wrap gap-1 mt-2">
@@ -118,5 +138,6 @@
             </a>
         </div>
     {% endif %}
+    </form>
 </div>
 {% endblock %}
