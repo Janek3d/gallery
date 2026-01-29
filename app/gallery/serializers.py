@@ -32,13 +32,28 @@ class TagListField(serializers.Field):
         return data
 
 
+class PictureUserTagsField(serializers.Field):
+    """Read-write field for Picture user tags (source='user')."""
+    def get_attribute(self, instance):
+        return instance  # pass picture so to_representation gets it
+    def to_representation(self, instance):
+        return [tag.name for tag in instance.user_tags]
+    def to_internal_value(self, data):
+        if data is None:
+            return []
+        if not isinstance(data, list):
+            raise serializers.ValidationError("Tags must be a list of tag names")
+        return [str(x).strip() for x in data if str(x).strip()]
+
+
 class PictureSerializer(serializers.ModelSerializer):
     """Serializer for Picture model with signed URL"""
     signed_url = serializers.SerializerMethodField()
     all_tags = serializers.SerializerMethodField()
-    tags = TagListField()
+    tags = PictureUserTagsField()
+    ai_tags = serializers.SerializerMethodField()
     album_name = serializers.CharField(source='album.name', read_only=True)
-    
+
     class Meta:
         model = Picture
         fields = [
@@ -52,7 +67,7 @@ class PictureSerializer(serializers.ModelSerializer):
             'seaweedfs_file_id', 'signed_url', 'file_size', 'mime_type',
             'width', 'height', 'uploaded_at', 'updated_at'
         ]
-    
+
     def get_signed_url(self, obj):
         """Generate signed URL for the picture"""
         if not obj.seaweedfs_file_id:
@@ -62,9 +77,13 @@ class PictureSerializer(serializers.ModelSerializer):
             return signed['url']
         except Exception:
             return None
-    
+
+    def get_ai_tags(self, obj):
+        """AI-added tag names (e.g. from YOLO)"""
+        return [tag.name for tag in obj.ai_tags]
+
     def get_all_tags(self, obj):
-        """Get all tags (user tags + AI tags)"""
+        """Get all tag names (user + AI)"""
         return obj.all_tags
     
     def update(self, instance, validated_data):

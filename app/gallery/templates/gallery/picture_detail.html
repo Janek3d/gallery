@@ -68,7 +68,7 @@
                 <div class="mb-4">
                     <h3 class="font-medium text-gray-700 mb-2">Tags</h3>
                     <div class="flex flex-wrap gap-2">
-                        {% for tag in picture.tags.all %}
+                        {% for tag in picture.user_tags %}
                             <span class="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded">
                                 {{ tag.name }}
                             </span>
@@ -79,18 +79,18 @@
                 </div>
                 
                 <!-- AI Tags -->
-                {% if picture.ai_tags %}
-                    <div class="mb-4">
-                        <h3 class="font-medium text-gray-700 mb-2">AI Tags</h3>
-                        <div class="flex flex-wrap gap-2">
-                            {% for tag in picture.ai_tags %}
-                                <span class="px-2 py-1 bg-green-100 text-green-800 text-sm rounded">
-                                    {{ tag }}
-                                </span>
-                            {% endfor %}
-                        </div>
+                <div class="mb-4">
+                    <h3 class="font-medium text-gray-700 mb-2">AI Tags</h3>
+                    <div class="flex flex-wrap gap-2">
+                        {% for tag in picture.ai_tags %}
+                            <span class="px-2 py-1 bg-green-100 text-green-800 text-sm rounded">
+                                {{ tag.name }}
+                            </span>
+                        {% empty %}
+                            <span class="text-sm text-gray-400">No AI tags</span>
+                        {% endfor %}
                     </div>
-                {% endif %}
+                </div>
                 
                 <!-- OCR Text -->
                 {% if picture.ocr_text %}

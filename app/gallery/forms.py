@@ -105,7 +105,7 @@ class PictureEditForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
-            self.fields['tags'].initial = ', '.join([tag.name for tag in self.instance.tags.all()])
+            self.fields['tags'].initial = ', '.join([tag.name for tag in self.instance.user_tags])
 
     def save(self, commit=True):
         picture = super().save(commit=commit)

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Gallery, Album, Picture, GalleryShare, Tag
+from .models import Gallery, Album, Picture, PictureTag, GalleryShare, Tag
 
 
 @admin.register(Tag)
@@ -29,13 +29,19 @@ class AlbumAdmin(admin.ModelAdmin):
     filter_horizontal = ['tags']
 
 
+class PictureTagInline(admin.TabularInline):
+    model = PictureTag
+    extra = 0
+    autocomplete_fields = ['tag']
+
+
 @admin.register(Picture)
 class PictureAdmin(admin.ModelAdmin):
     list_display = ['title', 'album', 'file_size', 'width', 'height', 'is_favorite', 'uploaded_at', 'deleted_at']
-    list_filter = ['is_favorite', 'tags', 'uploaded_at', 'deleted_at', 'mime_type']
+    list_filter = ['is_favorite', 'uploaded_at', 'deleted_at', 'mime_type']
     search_fields = ['title', 'description', 'album__name', 'ocr_text', 'tags__name']
     readonly_fields = ['uploaded_at', 'updated_at', 'seaweedfs_file_id']
-    filter_horizontal = ['tags']
+    inlines = [PictureTagInline]
 
 
 @admin.register(GalleryShare)

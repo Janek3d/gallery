@@ -96,17 +96,12 @@ def process_picture_ai(self, picture_id):
     if not image_bytes:
         return
 
-    ai_tags = _run_yolo(image_bytes)
+    ai_tag_names = _run_yolo(image_bytes)
     ocr_text = _run_paddleocr(image_bytes)
 
-    update_fields = []
-    if ai_tags is not None:
-        picture.ai_tags = ai_tags
-        update_fields.append('ai_tags')
+    if ai_tag_names is not None:
+        picture.set_ai_tags(ai_tag_names)
     if ocr_text is not None:
         picture.ocr_text = ocr_text
-        update_fields.append('ocr_text')
-
-    if update_fields:
-        picture.save(update_fields=update_fields)
-        logger.info("Picture %s: ai_tags=%s, ocr_text length=%s", picture_id, len(ai_tags), len(ocr_text or ''))
+        picture.save(update_fields=['ocr_text'])
+    logger.info("Picture %s: ai_tags=%s, ocr_text length=%s", picture_id, len(ai_tag_names or []), len(ocr_text or ''))

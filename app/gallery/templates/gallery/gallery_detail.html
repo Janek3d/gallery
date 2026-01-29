@@ -86,13 +86,24 @@
 
 <!-- Albums -->
 <div class="mb-6">
-    <form method="post" action="{% url 'gallery:album_bulk_delete' gallery.id %}" id="album-bulk-delete-form">
+    <form method="post" action="{% url 'gallery:album_bulk_delete' gallery.id %}" id="album-bulk-delete-form" class="album-bulk-delete-form">
         {% csrf_token %}
+        <style>
+            .album-bulk-delete-form .album-card-select,
+            .album-bulk-delete-form .album-delete-selected-btn { display: none; }
+            .album-bulk-delete-form.bulk-delete-mode .album-card-select,
+            .album-bulk-delete-form.bulk-delete-mode .album-delete-selected-btn { display: flex; }
+        </style>
         <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
             <h2 class="text-2xl font-bold text-gray-900">Albums</h2>
             <div class="flex gap-2 items-center">
+                <button type="button"
+                        class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+                        onclick="document.getElementById('album-bulk-delete-form').classList.toggle('bulk-delete-mode'); this.textContent = document.getElementById('album-bulk-delete-form').classList.contains('bulk-delete-mode') ? 'Cancel' : 'Select for delete';">
+                    Select for delete
+                </button>
                 <button type="submit" name="bulk_delete" value="1"
-                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                        class="album-delete-selected-btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
                         form="album-bulk-delete-form"
                         onclick="return confirm('Delete selected albums?');">
                     Delete selected
@@ -108,12 +119,14 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {% for album in albums %}
                 <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow relative group">
-                    <label class="absolute top-2 right-2 z-10 flex items-center gap-1 bg-white/90 rounded px-1 py-0.5 shadow cursor-pointer" onclick="event.stopPropagation();">
-                        <input type="checkbox" name="ids" value="{{ album.id }}" form="album-bulk-delete-form" class="rounded border-gray-300">
-                        <span class="text-xs text-gray-700">Select</span>
-                    </label>
                     <a href="{% url 'gallery:album_detail' album.id %}" class="block">
                         <div class="p-4">
+                            <div class="album-card-select mb-2 items-center gap-1 cursor-pointer" onclick="event.preventDefault(); event.stopPropagation();">
+                                <label class="flex items-center gap-1 bg-gray-100 rounded px-2 py-1 w-fit">
+                                    <input type="checkbox" name="ids" value="{{ album.id }}" form="album-bulk-delete-form" class="rounded border-gray-300">
+                                    <span class="text-xs text-gray-700">Select</span>
+                                </label>
+                            </div>
                             <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ album.name }}</h3>
                             <p class="text-gray-600 text-sm mb-2">{{ album.description|truncatewords:10 }}</p>
                             <p class="text-xs text-gray-500">{{ album.picture_count }} pictures</p>

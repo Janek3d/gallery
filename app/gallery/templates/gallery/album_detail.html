@@ -65,13 +65,24 @@
 
 <!-- Pictures Grid -->
 <div class="mb-6">
-    <form method="post" action="{% url 'gallery:picture_bulk_delete' album.id %}" id="bulk-delete-form">
+    <form method="post" action="{% url 'gallery:picture_bulk_delete' album.id %}" id="bulk-delete-form" class="picture-bulk-delete-form">
         {% csrf_token %}
+        <style>
+            .picture-bulk-delete-form .picture-card-select,
+            .picture-bulk-delete-form .picture-delete-selected-btn { display: none; }
+            .picture-bulk-delete-form.bulk-delete-mode .picture-card-select,
+            .picture-bulk-delete-form.bulk-delete-mode .picture-delete-selected-btn { display: flex; }
+        </style>
         <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
             <h2 class="text-2xl font-bold text-gray-900">Pictures ({{ pictures|length }})</h2>
             <div class="flex gap-2 items-center">
+                <button type="button"
+                        class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+                        onclick="document.getElementById('bulk-delete-form').classList.toggle('bulk-delete-mode'); this.textContent = document.getElementById('bulk-delete-form').classList.contains('bulk-delete-mode') ? 'Cancel' : 'Select for delete';">
+                    Select for delete
+                </button>
                 <button type="submit" name="bulk_delete" value="1"
-                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                        class="picture-delete-selected-btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
                         form="bulk-delete-form"
                         onclick="return confirm('Delete selected pictures?');">
                     Delete selected
@@ -87,11 +98,13 @@
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
             {% for picture in pictures %}
                 <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow group relative">
-                    <label class="absolute top-2 left-2 z-10 flex items-center gap-1 bg-white/90 rounded px-1 py-0.5 shadow cursor-pointer" onclick="event.stopPropagation();">
-                        <input type="checkbox" name="ids" value="{{ picture.id }}" form="bulk-delete-form" class="rounded border-gray-300">
-                        <span class="text-xs text-gray-700">Select</span>
-                    </label>
                     <a href="{% url 'gallery:picture_detail' picture.id %}" class="block">
+                        <div class="picture-card-select absolute top-2 left-2 z-10 items-center gap-1 cursor-pointer" onclick="event.preventDefault(); event.stopPropagation();">
+                            <label class="flex items-center gap-1 bg-white/90 rounded px-1 py-0.5 shadow w-fit">
+                                <input type="checkbox" name="ids" value="{{ picture.id }}" form="bulk-delete-form" class="rounded border-gray-300">
+                                <span class="text-xs text-gray-700">Select</span>
+                            </label>
+                        </div>
                         <div class="aspect-square bg-gray-200 relative">
                             {% if picture.signed_url %}
                                 <img src="{{ picture.signed_url }}" 
