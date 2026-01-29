@@ -10,7 +10,7 @@ from django.views.decorators.http import require_http_methods
 from django.template.loader import render_to_string
 from .models import Gallery, Album, Picture, Tag
 from .forms import GalleryForm, AlbumForm, PictureUploadForm
-from .utils import generate_signed_url, upload_picture_file
+from .utils import generate_signed_url, upload_picture_file, extract_images_from_archive
 import logging
 
 logger = logging.getLogger(__name__)
@@ -202,7 +202,7 @@ def album_detail(request, pk):
         pk=pk
     )
     
-    # Generate signed URLs for pictures
+    # Generate signed URLs for pictures (set on same objects passed to template)
     pictures = album.pictures.filter(deleted_at__isnull=True).prefetch_related('tags')
     for picture in pictures:
         if picture.seaweedfs_file_id:
@@ -211,7 +211,8 @@ def album_detail(request, pk):
                 picture.signed_url = signed['url']
             except Exception:
                 picture.signed_url = None
-    logger.warning(f"{pictures=}")
+        else:
+            picture.signed_url = None
     context = {
         'album': album,
         'pictures': pictures,
@@ -321,9 +322,49 @@ def album_remove_tag(request, pk):
     return HttpResponse('')
 
 
+def _process_uploaded_image(uploaded_file, album, form_cleaned_data):
+    """Process a single uploaded image: get dimensions, upload to storage, create Picture, add tags."""
+    width, height = None, None
+    try:
+        from PIL import Image
+        img = Image.open(uploaded_file)
+        width, height = img.size
+        uploaded_file.seek(0)
+    except Exception:
+        pass
+
+    file_id = upload_picture_file(
+        uploaded_file,
+        album_id=album.id,
+        content_type=getattr(uploaded_file, 'content_type', None),
+    )
+    title = form_cleaned_data.get('title') or (getattr(uploaded_file, 'name', '') or 'Untitled')
+    if title == 'Untitled' and getattr(uploaded_file, 'name', ''):
+        title = uploaded_file.name
+
+    picture = Picture(
+        album=album,
+        title=title,
+        description=form_cleaned_data.get('description', ''),
+        seaweedfs_file_id=file_id,
+        file_size=getattr(uploaded_file, 'size', 0) or 0,
+        mime_type=getattr(uploaded_file, 'content_type', 'image/jpeg') or 'image/jpeg',
+        width=width,
+        height=height,
+    )
+    picture.save()
+
+    tags_str = form_cleaned_data.get('tags', '')
+    if tags_str:
+        tag_names = [t.strip() for t in tags_str.split(',') if t.strip()]
+        for tag_name in tag_names:
+            picture.add_tag(tag_name)
+    return picture
+
+
 @login_required
 def picture_upload(request, album_id):
-    """Upload one or more pictures to an album"""
+    """Upload one or more pictures, or an archive (ZIP/TAR), to an album."""
     album = get_object_or_404(
         Album.objects.filter(
             Q(gallery__owner=request.user) | Q(gallery__shared_with=request.user),
@@ -335,47 +376,59 @@ def picture_upload(request, album_id):
     if request.method == 'POST':
         form = PictureUploadForm(request.POST, request.FILES, album=album)
         if form.is_valid():
-            uploaded_file = form.cleaned_data['file']
-            width, height = None, None
-            try:
-                from PIL import Image
-                img = Image.open(uploaded_file)
-                width, height = img.size
-                uploaded_file.seek(0)
-            except Exception:
-                pass
+            images_to_process = []
 
-            try:
-                file_id = upload_picture_file(
-                    uploaded_file,
-                    album_id=album.id,
-                    content_type=getattr(uploaded_file, 'content_type', None),
-                )
-            except Exception as e:
-                messages.error(request, f'Failed to save file: {e}')
+            # Collect multiple files from input name="files"
+            for f in request.FILES.getlist('files'):
+                if f and getattr(f, 'size', 0):
+                    images_to_process.append(f)
+
+            # Single file from input name="file" (backward compat)
+            single = request.FILES.get('file')
+            if single and getattr(single, 'size', 0):
+                images_to_process.append(single)
+
+            # Archive: extract images
+            archive = request.FILES.get('archive')
+            if archive and getattr(archive, 'size', 0):
+                try:
+                    for _filename, file_obj in extract_images_from_archive(archive):
+                        images_to_process.append(file_obj)
+                except ValueError as e:
+                    messages.error(request, str(e))
+                    context = {'form': form, 'album': album}
+                    return render(request, 'gallery/picture_upload.html', context)
+                except Exception as e:
+                    messages.error(request, f'Failed to read archive: {e}')
+                    context = {'form': form, 'album': album}
+                    return render(request, 'gallery/picture_upload.html', context)
+
+            if not images_to_process:
+                messages.error(request, 'Please select one or more images, or upload a ZIP/TAR archive.')
                 context = {'form': form, 'album': album}
                 return render(request, 'gallery/picture_upload.html', context)
 
-            picture = Picture(
-                album=album,
-                title=form.cleaned_data.get('title') or (uploaded_file.name or 'Untitled'),
-                description=form.cleaned_data.get('description', ''),
-                seaweedfs_file_id=file_id,
-                file_size=uploaded_file.size,
-                mime_type=getattr(uploaded_file, 'content_type', 'image/jpeg') or 'image/jpeg',
-                width=width,
-                height=height,
-            )
-            picture.save()
+            created = []
+            failed = []
+            for uploaded_file in images_to_process:
+                try:
+                    picture = _process_uploaded_image(uploaded_file, album, form.cleaned_data)
+                    created.append(picture)
+                except Exception as e:
+                    failed.append((getattr(uploaded_file, 'name', '?'), str(e)))
 
-            tags_str = form.cleaned_data.get('tags', '')
-            if tags_str:
-                tag_names = [t.strip() for t in tags_str.split(',') if t.strip()]
-                for tag_name in tag_names:
-                    picture.add_tag(tag_name)
-
-            messages.success(request, f'Picture "{picture.title}" uploaded successfully!')
-            return redirect('gallery:album_detail', pk=album.id)
+            if failed:
+                for name, err in failed:
+                    messages.error(request, f'Failed to upload {name}: {err}')
+            if created:
+                msg = f'{len(created)} picture(s) uploaded successfully.'
+                if len(created) == 1:
+                    msg = f'Picture "{created[0].title}" uploaded successfully!'
+                messages.success(request, msg)
+                return redirect('gallery:album_detail', pk=album.id)
+            # All failed
+            context = {'form': form, 'album': album}
+            return render(request, 'gallery/picture_upload.html', context)
     else:
         form = PictureUploadForm(album=album)
 
@@ -433,3 +486,50 @@ def picture_toggle_favorite(request, pk):
     }, request=request)
     
     return HttpResponse(button_html)
+
+
+@login_required
+@require_http_methods(["POST"])
+def picture_delete(request, pk):
+    """Soft-delete a single picture and redirect to album."""
+    picture = get_object_or_404(
+        Picture.objects.filter(
+            Q(album__gallery__owner=request.user) | Q(album__gallery__shared_with=request.user),
+            deleted_at__isnull=True
+        ),
+        pk=pk
+    )
+    album_id = picture.album_id
+    picture.soft_delete()
+    messages.success(request, 'Picture deleted.')
+    return redirect('gallery:album_detail', pk=album_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def picture_bulk_delete(request, pk):
+    """Soft-delete selected pictures in an album (bulk operation)."""
+    album = get_object_or_404(
+        Album.objects.filter(
+            Q(gallery__owner=request.user) | Q(gallery__shared_with=request.user),
+            deleted_at__isnull=True
+        ),
+        pk=pk
+    )
+    ids = request.POST.getlist('ids')
+    if not ids:
+        messages.warning(request, 'No pictures selected.')
+        return redirect('gallery:album_detail', pk=pk)
+    # Restrict to pictures in this album and not already deleted
+    to_delete = album.pictures.filter(
+        pk__in=ids,
+        deleted_at__isnull=True
+    )
+    count = to_delete.count()
+    for picture in to_delete:
+        picture.soft_delete()
+    if count == 1:
+        messages.success(request, '1 picture deleted.')
+    else:
+        messages.success(request, f'{count} pictures deleted.')
+    return redirect('gallery:album_detail', pk=pk)

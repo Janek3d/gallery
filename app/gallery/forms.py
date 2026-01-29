@@ -87,17 +87,22 @@ class AlbumForm(forms.ModelForm):
 
 
 class PictureUploadForm(forms.ModelForm):
-    """Form for uploading pictures"""
+    """Form for uploading one or more pictures, or an archive (ZIP/TAR)."""
     file = forms.ImageField(
-        required=True,
-        help_text="Upload image file (JPG, PNG, HEIC)"
+        required=False,
+        help_text="Single image (optional if using multiple files or archive)",
     )
     tags = forms.CharField(
         required=False,
-        help_text="Enter tags separated by commas",
-        widget=forms.TextInput(attrs={'placeholder': 'sunset, beach, vacation'})
+        help_text="Enter tags separated by commas (applied to all uploads)",
+        widget=forms.TextInput(attrs={'placeholder': 'sunset, beach, vacation'}),
     )
-    
+    archive = forms.FileField(
+        required=False,
+        help_text="ZIP or TAR archive containing images (up to 100MB)",
+        widget=forms.FileInput(attrs={'accept': '.zip,.tar,.tar.gz,.tgz'}),
+    )
+
     class Meta:
         model = Picture
         fields = ['title', 'description']
@@ -105,14 +110,12 @@ class PictureUploadForm(forms.ModelForm):
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         self.album = kwargs.pop('album', None)
         super().__init__(*args, **kwargs)
-    
+
     def save(self, commit=True):
-        # This form is mainly for file upload
-        # Actual saving will be handled in the view after processing
         picture = super().save(commit=False)
         if self.album:
             picture.album = self.album

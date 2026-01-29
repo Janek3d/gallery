@@ -4,12 +4,16 @@ Utility functions for Gallery app, including signed URL generation for SeaweedFS
 import hmac
 import hashlib
 import base64
+import io
 import time
 import uuid
+import zipfile
+import tarfile
 from urllib.parse import urlencode, quote
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.storage import default_storage
+from django.core.files.uploadedfile import SimpleUploadedFile
 import logging
 
 logger = logging.getLogger(__name__)
@@ -155,3 +159,70 @@ def upload_picture_file(file, album_id, content_type=None):
     name = f'pictures/{album_id}/{uuid.uuid4().hex}.{ext}'
     path = default_storage.save(name, file)
     return path
+
+
+IMAGE_EXTENSIONS = frozenset(('jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'))
+
+
+def _is_image_filename(name):
+    if not name or '/' in name or '\\' in name:
+        return False
+    ext = name.rsplit('.', 1)[-1].lower() if '.' in name else ''
+    return ext in IMAGE_EXTENSIONS
+
+
+def extract_images_from_archive(archive_file, max_size=100 * 1024 * 1024):
+    """
+    Extract image files from a ZIP or TAR archive.
+    Yields (filename, file_like_object) for each image.
+    Skips non-image entries. Raises ValueError for invalid or too-large archives.
+
+    Args:
+        archive_file: Django UploadedFile (ZIP or TAR/TAR.GZ)
+        max_size: Max total uncompressed size to process (default 100MB)
+
+    Yields:
+        tuple: (original_filename, file-like object with .read(), .name, .size)
+    """
+    name = (getattr(archive_file, 'name', '') or '').lower()
+    archive_file.seek(0)
+    total_size = 0
+
+    if name.endswith('.zip'):
+        with zipfile.ZipFile(archive_file, 'r') as zf:
+            for info in zf.infolist():
+                if info.is_dir():
+                    continue
+                if not _is_image_filename(info.filename):
+                    continue
+                total_size += info.file_size
+                if total_size > max_size:
+                    raise ValueError(f'Archive exceeds maximum size ({max_size // (1024*1024)}MB)')
+                data = zf.read(info.filename)
+                yield (info.filename, SimpleUploadedFile(
+                    name=info.filename.rsplit('/')[-1],
+                    content=data,
+                    content_type='application/octet-stream',
+                ))
+    elif name.endswith('.tar') or name.endswith('.tar.gz') or name.endswith('.tgz'):
+        mode = 'r:gz' if ('.gz' in name or name.endswith('.tgz')) else 'r'
+        with tarfile.open(fileobj=archive_file, mode=mode) as tf:
+            for member in tf.getmembers():
+                if not member.isfile():
+                    continue
+                if not _is_image_filename(member.name):
+                    continue
+                total_size += member.size
+                if total_size > max_size:
+                    raise ValueError(f'Archive exceeds maximum size ({max_size // (1024*1024)}MB)')
+                f = tf.extractfile(member)
+                if f is None:
+                    continue
+                data = f.read()
+                yield (member.name, SimpleUploadedFile(
+                    name=member.name.rsplit('/')[-1],
+                    content=data,
+                    content_type='application/octet-stream',
+                ))
+    else:
+        raise ValueError('Unsupported archive format. Use .zip, .tar, or .tar.gz')

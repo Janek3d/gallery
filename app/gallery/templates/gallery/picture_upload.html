@@ -1,7 +1,7 @@
 {% extends "gallery/base.html" %}
 {% load static %}
 
-{% block title %}Upload Picture - {{ album.name }} - SmartGallery{% endblock %}
+{% block title %}Upload Pictures - {{ album.name }} - SmartGallery{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto">
@@ -10,26 +10,54 @@
             <a href="{% url 'gallery:album_detail' album.id %}"
                class="text-blue-600 hover:text-blue-800">← Back to {{ album.name }}</a>
         </div>
-        <h1 class="text-2xl font-bold text-gray-900 mb-6">Upload Picture to {{ album.name }}</h1>
+        <h1 class="text-2xl font-bold text-gray-900 mb-6">Upload Pictures to {{ album.name }}</h1>
 
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
 
             <div class="mb-4">
+                <label for="id_files" class="block text-sm font-medium text-gray-700 mb-2">
+                    Images (select one or more)
+                </label>
+                <input type="file"
+                       name="files"
+                       id="id_files"
+                       accept="image/*"
+                       multiple
+                       class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500 focus:border-blue-500">
+                <p class="text-xs text-gray-500 mt-1">JPG, PNG, GIF, WebP, HEIC. Select multiple files at once.</p>
+            </div>
+
+            <div class="mb-4">
                 <label for="id_file" class="block text-sm font-medium text-gray-700 mb-2">
-                    Image file *
+                    Or single image
                 </label>
                 <input type="file"
                        name="file"
                        id="id_file"
                        accept="image/*"
-                       required
                        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500 focus:border-blue-500">
-                <p class="text-xs text-gray-500 mt-1">JPG, PNG, GIF, WebP, HEIC</p>
                 {% if form.file.errors %}
                     <p class="text-red-500 text-sm mt-1">{{ form.file.errors.0 }}</p>
                 {% endif %}
             </div>
+
+            <div class="mb-4">
+                <label for="id_archive" class="block text-sm font-medium text-gray-700 mb-2">
+                    Or upload archive (ZIP / TAR)
+                </label>
+                <input type="file"
+                       name="archive"
+                       id="id_archive"
+                       accept=".zip,.tar,.tar.gz,.tgz"
+                       class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500 focus:border-blue-500">
+                <p class="text-xs text-gray-500 mt-1">ZIP or TAR archive containing images (up to 100MB). Images inside will be extracted and added to the album.</p>
+                {% if form.archive.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ form.archive.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <p class="text-sm text-gray-600 mb-4">Provide at least one: multiple images, a single image, or an archive.</p>
 
             <div class="mb-4">
                 <label for="id_title" class="block text-sm font-medium text-gray-700 mb-2">
@@ -67,13 +95,13 @@
                        value="{{ form.tags.value|default:'' }}"
                        placeholder="sunset, beach, vacation"
                        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500 focus:border-blue-500">
-                <p class="text-xs text-gray-500 mt-1">Enter tags separated by commas</p>
+                <p class="text-xs text-gray-500 mt-1">Applied to all uploaded pictures</p>
             </div>
 
             <div class="flex gap-4">
                 <button type="submit"
                         class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                    Upload Picture
+                    Upload
                 </button>
                 <a href="{% url 'gallery:album_detail' album.id %}"
                    class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded text-center">
