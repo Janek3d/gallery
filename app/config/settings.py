@@ -220,6 +220,22 @@ if USE_S3:
     # Use S3 for media files
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
     STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
+    STORAGES = {
+        'default': {
+            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+            'OPTIONS': {
+                'bucket_name': AWS_STORAGE_BUCKET_NAME,
+                'region_name': AWS_S3_REGION_NAME,
+            },
+        },
+        'staticfiles': {
+            'BACKEND': 'storages.backends.s3boto3.S3StaticStorage',
+            'OPTIONS': {
+                'bucket_name': AWS_STORAGE_BUCKET_NAME,
+                'region_name': AWS_S3_REGION_NAME,
+            },
+        },
+    }
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -457,7 +473,7 @@ LOGGING = {
         },
         'django.server': {
             'handlers': list(handlers.keys()),
-            'level': config.get('logging.django_server_level', os.getenv('DJANGO_SERVER_LOG_LEVEL', 'INFO')).upper(),
+            'level': config.get('logging.django_server_level', os.getenv('DJANGO_SERVER_LOG_LEVEL', 'WARNING')).upper(),
             'propagate': False,
         },
         'django.db.backends': {

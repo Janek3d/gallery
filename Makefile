@@ -114,39 +114,39 @@ collectstatic:
 
 # Docker commands
 docker-up:
-	docker-compose up -d
+	docker compose up -d
 
 docker-down:
-	docker-compose down
+	docker compose down
 
 docker-logs:
-	docker-compose logs -f
+	docker compose logs -f
 
 docker-build:
-	docker-compose build
+	docker compose build
 
 docker-ps:
-	docker-compose ps
+	docker compose ps
 
 # Docker VPS specific
 docker-up-vps:
-	docker-compose -f docker-compose.vps.yml up -d
+	docker compose -f docker-compose.vps.yml up -d
 
 docker-down-vps:
-	docker-compose -f docker-compose.vps.yml down
+	docker compose -f docker-compose.vps.yml down
 
 docker-logs-vps:
-	docker-compose -f docker-compose.vps.yml logs -f
+	docker compose -f docker-compose.vps.yml logs -f
 
 # Docker GPU specific
 docker-up-gpu:
-	docker-compose -f docker-compose.gpu.yml up -d
+	docker compose -f docker-compose.gpu.yml up -d
 
 docker-down-gpu:
-	docker-compose -f docker-compose.gpu.yml down
+	docker compose -f docker-compose.gpu.yml down
 
 docker-logs-gpu:
-	docker-compose -f docker-compose.gpu.yml logs -f
+	docker compose -f docker-compose.gpu.yml logs -f
 
 # Celery commands
 celery:

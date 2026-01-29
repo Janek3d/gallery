@@ -32,6 +32,7 @@ urlpatterns = [
     
     # Albums
     path('albums/<int:pk>/', template_views.album_detail, name='album_detail'),
+    path('albums/<int:pk>/edit/', template_views.album_edit, name='album_edit'),
     path('galleries/<int:gallery_id>/albums/create/', template_views.album_create, name='album_create'),
     
     # HTMX endpoints for albums
@@ -40,7 +41,8 @@ urlpatterns = [
     
     # Pictures
     path('pictures/<int:pk>/', template_views.picture_detail, name='picture_detail'),
-    
+    path('albums/<int:album_id>/pictures/upload/', template_views.picture_upload, name='picture_upload'),
+
     # HTMX endpoints for pictures
     path('pictures/<int:pk>/toggle-favorite/', template_views.picture_toggle_favorite, name='picture_toggle_favorite'),
 ]

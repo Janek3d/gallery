@@ -5,10 +5,14 @@ import hmac
 import hashlib
 import base64
 import time
+import uuid
 from urllib.parse import urlencode, quote
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.core.files.storage import default_storage
+import logging
 
+logger = logging.getLogger(__name__)
 
 def generate_signed_url(file_id, expires_in=3600, secret_key=None, algorithm='md5'):
     """
@@ -43,16 +47,15 @@ def generate_signed_url(file_id, expires_in=3600, secret_key=None, algorithm='md
     # Get base URL and construct full URI path
     base_url = getattr(settings, 'GALLERY_MEDIA_BASE_URL', '/media')
     uri_path = f"{base_url}/{quote(file_id)}"
-    
+
     # Create the string to sign
     # For nginx secure_link_md5: "$uri$secure_link_expires$secure_link_secret"
     # This means: /media/file_id + expires_at + secret_key
     string_to_sign = f"{uri_path}{expires_at}{secret_key}"
-    
     # Generate signature based on algorithm
     if algorithm == 'md5':
         # Use MD5 for nginx secure_link compatibility
-        signature = hashlib.md5(string_to_sign.encode('utf-8')).hexdigest()
+        signature = hashlib.md5(string_to_sign.encode('utf-8')).digest()
     else:
         # Use HMAC-SHA256 for custom validation
         signature = hmac.new(
@@ -60,7 +63,7 @@ def generate_signed_url(file_id, expires_in=3600, secret_key=None, algorithm='md
             string_to_sign.encode('utf-8'),
             hashlib.sha256
         ).digest()
-        signature = base64.urlsafe_b64encode(signature).decode('utf-8').rstrip('=')
+    signature = base64.urlsafe_b64encode(signature).decode('utf-8').rstrip('=')
     
     # Build query parameters
     params = {
@@ -70,6 +73,7 @@ def generate_signed_url(file_id, expires_in=3600, secret_key=None, algorithm='md
     
     # Construct the signed URL
     signed_url = f"{uri_path}?{urlencode(params)}"
+    # logger.info(f"{string_to_sign=} {len(string_to_sign)=} {repr(string_to_sign)} | {signature=} {len(signature)=} {repr(signature)} | {uri_path=} | {expires_at=} | {signed_url=}")
     
     return {
         'url': signed_url,
@@ -130,3 +134,24 @@ def verify_signed_url(file_id, signature, expires_at, secret_key=None, algorithm
         if len(signature_padded) % 4:
             signature_padded += '=' * (4 - len(signature_padded) % 4)
         return hmac.compare_digest(expected_signature_b64, signature_padded)
+
+
+def upload_picture_file(file, album_id, content_type=None):
+    """
+    Save an uploaded picture file to storage (S3/SeaweedFS or local MEDIA_ROOT).
+    Returns the storage path to use as seaweedfs_file_id for the Picture model.
+
+    Args:
+        file: Uploaded file object (Django UploadedFile)
+        album_id: Album id (used in path)
+        content_type: Optional MIME type (defaults to file.content_type)
+
+    Returns:
+        str: Storage path/key to store in Picture.seaweedfs_file_id
+    """
+    ext = (file.name or '').split('.')[-1].lower() or 'jpg'
+    if ext not in ('jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'):
+        ext = 'jpg'
+    name = f'pictures/{album_id}/{uuid.uuid4().hex}.{ext}'
+    path = default_storage.save(name, file)
+    return path

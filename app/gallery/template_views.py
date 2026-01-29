@@ -9,9 +9,11 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.template.loader import render_to_string
 from .models import Gallery, Album, Picture, Tag
-from .forms import GalleryForm, AlbumForm
-from .utils import generate_signed_url
+from .forms import GalleryForm, AlbumForm, PictureUploadForm
+from .utils import generate_signed_url, upload_picture_file
+import logging
 
+logger = logging.getLogger(__name__)
 
 @login_required
 def gallery_list(request):
@@ -209,7 +211,7 @@ def album_detail(request, pk):
                 picture.signed_url = signed['url']
             except Exception:
                 picture.signed_url = None
-    
+    logger.warning(f"{pictures=}")
     context = {
         'album': album,
         'pictures': pictures,
@@ -245,6 +247,30 @@ def album_create(request, gallery_id):
         form = AlbumForm(gallery=gallery)
     
     context = {'form': form, 'gallery': gallery}
+    return render(request, 'gallery/album_form.html', context)
+
+
+@login_required
+def album_edit(request, pk):
+    """Edit an album"""
+    album = get_object_or_404(
+        Album.objects.filter(
+            Q(gallery__owner=request.user) | Q(gallery__shared_with=request.user),
+            deleted_at__isnull=True
+        ),
+        pk=pk
+    )
+    
+    if request.method == 'POST':
+        form = AlbumForm(request.POST, instance=album)
+        if form.is_valid():
+            album = form.save()
+            messages.success(request, f'Album "{album.name}" updated successfully!')
+            return redirect('gallery:album_detail', pk=album.id)
+    else:
+        form = AlbumForm(instance=album)
+    
+    context = {'form': form, 'album': album, 'gallery': album.gallery}
     return render(request, 'gallery/album_form.html', context)
 
 
@@ -293,6 +319,68 @@ def album_remove_tag(request, pk):
     
     # Return empty string to remove the tag element
     return HttpResponse('')
+
+
+@login_required
+def picture_upload(request, album_id):
+    """Upload one or more pictures to an album"""
+    album = get_object_or_404(
+        Album.objects.filter(
+            Q(gallery__owner=request.user) | Q(gallery__shared_with=request.user),
+            deleted_at__isnull=True
+        ),
+        pk=album_id
+    )
+
+    if request.method == 'POST':
+        form = PictureUploadForm(request.POST, request.FILES, album=album)
+        if form.is_valid():
+            uploaded_file = form.cleaned_data['file']
+            width, height = None, None
+            try:
+                from PIL import Image
+                img = Image.open(uploaded_file)
+                width, height = img.size
+                uploaded_file.seek(0)
+            except Exception:
+                pass
+
+            try:
+                file_id = upload_picture_file(
+                    uploaded_file,
+                    album_id=album.id,
+                    content_type=getattr(uploaded_file, 'content_type', None),
+                )
+            except Exception as e:
+                messages.error(request, f'Failed to save file: {e}')
+                context = {'form': form, 'album': album}
+                return render(request, 'gallery/picture_upload.html', context)
+
+            picture = Picture(
+                album=album,
+                title=form.cleaned_data.get('title') or (uploaded_file.name or 'Untitled'),
+                description=form.cleaned_data.get('description', ''),
+                seaweedfs_file_id=file_id,
+                file_size=uploaded_file.size,
+                mime_type=getattr(uploaded_file, 'content_type', 'image/jpeg') or 'image/jpeg',
+                width=width,
+                height=height,
+            )
+            picture.save()
+
+            tags_str = form.cleaned_data.get('tags', '')
+            if tags_str:
+                tag_names = [t.strip() for t in tags_str.split(',') if t.strip()]
+                for tag_name in tag_names:
+                    picture.add_tag(tag_name)
+
+            messages.success(request, f'Picture "{picture.title}" uploaded successfully!')
+            return redirect('gallery:album_detail', pk=album.id)
+    else:
+        form = PictureUploadForm(album=album)
+
+    context = {'form': form, 'album': album}
+    return render(request, 'gallery/picture_upload.html', context)
 
 
 @login_required

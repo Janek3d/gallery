@@ -2,7 +2,7 @@
 # Runs: web, db, redis, celery (CPU), celery-beat, flower, nginx, seaweedfs
 # Does NOT run: celery-gpu (runs on local machine)
 
-version: '3.8'
+# version: '3.8'
 
 services:
   db:
@@ -47,12 +47,14 @@ services:
   seaweedfs:
     image: chrislusf/seaweedfs:latest
     container_name: gallery_seaweedfs
-    command: "server -master.port=9333 -volume.port=8080 -filer.port=8888 -s3.port=8333"
+    # command: "server -master.port=9333 -volume.port=8080 -filer.port=8888 -s3.port=8333"
+    command: "mini -dir=/data"
     ports:
       - "9333:9333"  # Master
       - "8080:8080"  # Volume
       - "8888:8888"  # Filer
       - "8333:8333"  # S3
+      - "23646:23646"  # AdminUI
     volumes:
       - seaweedfs_data:/data
     networks:
@@ -165,6 +167,8 @@ services:
   nginx:
     image: nginx:alpine
     container_name: gallery_nginx
+    # env_file:
+    #   - .env
     ports:
       - "80:80"
       - "443:443"

@@ -30,15 +30,16 @@ class GalleryForm(forms.ModelForm):
     
     def save(self, commit=True):
         gallery = super().save(commit=commit)
+        # print(f"Gallery: {gallery}")
         
         # Handle tags
-        tags_str = self.cleaned_data.get('tags', '')
-        if tags_str:
-            tag_names = [tag.strip() for tag in tags_str.split(',') if tag.strip()]
-            gallery.set_tags(tag_names)
-        elif commit:
-            # Clear tags if empty
-            gallery.tags.clear()
+        # tags_str = self.cleaned_data.get('tags', '')
+        # if tags_str:
+        #     tag_names = [tag.strip() for tag in tags_str.split(',') if tag.strip()]
+        #     gallery.set_tags(tag_names)
+        # elif commit:
+        #     # Clear tags if empty
+        #     gallery.tags.clear()
         
         return gallery
 
