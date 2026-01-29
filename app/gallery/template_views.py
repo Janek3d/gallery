@@ -9,7 +9,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.template.loader import render_to_string
 from .models import Gallery, Album, Picture, Tag
-from .forms import GalleryForm, AlbumForm, PictureUploadForm
+from .forms import GalleryForm, AlbumForm, PictureUploadForm, PictureEditForm
 from .utils import generate_signed_url, upload_picture_file, extract_images_from_archive
 import logging
 
@@ -554,6 +554,28 @@ def picture_detail(request, pk):
         'signed_url': signed_url,
     }
     return render(request, 'gallery/picture_detail.html', context)
+
+
+@login_required
+def picture_edit(request, pk):
+    """Edit picture title, description, and tags."""
+    picture = get_object_or_404(
+        Picture.objects.filter(
+            Q(album__gallery__owner=request.user) | Q(album__gallery__shared_with=request.user),
+            deleted_at__isnull=True
+        ),
+        pk=pk
+    )
+    if request.method == 'POST':
+        form = PictureEditForm(request.POST, instance=picture)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Picture "{picture.title or "Untitled"}" updated successfully!')
+            return redirect('gallery:picture_detail', pk=picture.id)
+    else:
+        form = PictureEditForm(instance=picture)
+    context = {'form': form, 'picture': picture}
+    return render(request, 'gallery/picture_edit.html', context)
 
 
 @login_required

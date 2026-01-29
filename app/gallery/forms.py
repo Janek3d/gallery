@@ -86,6 +86,36 @@ class AlbumForm(forms.ModelForm):
         return album
 
 
+class PictureEditForm(forms.ModelForm):
+    """Form for editing picture title, description, and user tags."""
+    tags = forms.CharField(
+        required=False,
+        help_text="Enter tags separated by commas",
+        widget=forms.TextInput(attrs={'placeholder': 'sunset, beach, vacation'}),
+    )
+
+    class Meta:
+        model = Picture
+        fields = ['title', 'description']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields['tags'].initial = ', '.join([tag.name for tag in self.instance.tags.all()])
+
+    def save(self, commit=True):
+        picture = super().save(commit=commit)
+        if commit:
+            tags_str = self.cleaned_data.get('tags', '')
+            tag_names = [t.strip() for t in tags_str.split(',') if t.strip()]
+            picture.set_tags(tag_names)
+        return picture
+
+
 class PictureUploadForm(forms.ModelForm):
     """Form for uploading one or more pictures, or an archive (ZIP/TAR)."""
     file = forms.ImageField(

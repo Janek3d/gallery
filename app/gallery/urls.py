@@ -45,6 +45,7 @@ urlpatterns = [
     
     # Pictures
     path('pictures/<int:pk>/', template_views.picture_detail, name='picture_detail'),
+    path('pictures/<int:pk>/edit/', template_views.picture_edit, name='picture_edit'),
     path('pictures/<int:pk>/delete/', template_views.picture_delete, name='picture_delete'),
     path('albums/<int:album_id>/pictures/upload/', template_views.picture_upload, name='picture_upload'),
     path('albums/<int:pk>/pictures/delete/', template_views.picture_bulk_delete, name='picture_bulk_delete'),
