@@ -52,4 +52,5 @@ urlpatterns = [
 
     # HTMX endpoints for pictures
     path('pictures/<int:pk>/toggle-favorite/', template_views.picture_toggle_favorite, name='picture_toggle_favorite'),
+    path('pictures/<int:pk>/reprocess-ai/', template_views.picture_reprocess_ai, name='picture_reprocess_ai'),
 ]

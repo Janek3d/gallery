@@ -228,13 +228,14 @@ if USE_S3:
                 'region_name': AWS_S3_REGION_NAME,
             },
         },
-        'staticfiles': {
-            'BACKEND': 'storages.backends.s3boto3.S3StaticStorage',
-            'OPTIONS': {
-                'bucket_name': AWS_STORAGE_BUCKET_NAME,
-                'region_name': AWS_S3_REGION_NAME,
-            },
-        },
+        # 'staticfiles': {
+        #     'BACKEND': 'storages.backends.s3boto3.S3StaticStorage',
+        #     'OPTIONS': {
+        #         'bucket_name': AWS_STORAGE_BUCKET_NAME,
+        #         'region_name': AWS_S3_REGION_NAME,
+        #     },
+        # },
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
     }
 
 # Default primary key field type

@@ -609,6 +609,28 @@ def picture_edit(request, pk):
 
 @login_required
 @require_http_methods(["POST"])
+def picture_reprocess_ai(request, pk):
+    """Re-run YOLO + PaddleOCR on this picture (e.g. after model update). Queues task and redirects back."""
+    picture = get_object_or_404(
+        Picture.objects.filter(
+            Q(album__gallery__owner=request.user) | Q(album__gallery__shared_with=request.user),
+            deleted_at__isnull=True
+        ),
+        pk=pk
+    )
+    if process_picture_ai and picture.seaweedfs_file_id:
+        process_picture_ai.apply_async(args=[picture.id], queue='gpu')
+        messages.success(request, 'Re-run queued. AI tags and OCR text will update shortly.')
+    else:
+        if not picture.seaweedfs_file_id:
+            messages.warning(request, 'Picture has no image file; cannot re-run AI.')
+        else:
+            messages.warning(request, 'AI processing is not configured.')
+    return redirect('gallery:picture_detail', pk=pk)
+
+
+@login_required
+@require_http_methods(["POST"])
 def picture_toggle_favorite(request, pk):
     """Toggle favorite status for picture (HTMX endpoint)"""
     picture = get_object_or_404(
