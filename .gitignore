@@ -30,6 +30,10 @@ test_db.sqlite3  # Test database (if using file-based SQLite for debugging)
 config.yaml
 !config.example.yaml
 
+# Nginx SSL (certificates and local SSL config)
+nginx/ssl/
+nginx/conf.d/ssl.conf
+
 # IDE
 .vscode/
 .idea/

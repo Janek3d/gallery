@@ -44,6 +44,7 @@ This guide explains how to deploy the gallery application across two machines us
 - Docker and Docker Compose installed
 - Ports open: 80, 443, 51820 (WireGuard UDP), 8000 (Web)
 - WireGuard installed and configured (see [WIREGUARD_SETUP.md](WIREGUARD_SETUP.md))
+- For HTTPS: SSL certificate and nginx SSL config (see [SSL_NGINX.md](SSL_NGINX.md))
 - Firewall configured to allow WireGuard port (51820/UDP) from your local IP
 
 ### Local Laptop Requirements
