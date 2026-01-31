@@ -16,13 +16,16 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Install only dependencies from pyproject.toml (no project install; app/ copied last for cache)
 COPY pyproject.toml ./
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -e .
+    python3 -c "import tomllib; d=tomllib.load(open('pyproject.toml','rb')); print('\n'.join(d['project']['dependencies']))" > requirements.txt && \
+    pip install --no-cache-dir -r requirements.txt && \
+    rm -rf /root/.cache/pip
 
-# Copy Django app (manage.py and config/ will be directly in /app)
+# Copy Django app (manage.py, config/, gallery/ under /app)
 COPY app/ .
+ENV PYTHONPATH=/app
 
 # Collect static files
 RUN python manage.py collectstatic --noinput || true
