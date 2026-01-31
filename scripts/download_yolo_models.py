@@ -61,7 +61,7 @@ try:
     
 except ImportError as e:
     print(f"✗ Error: ultralytics package not installed: {e}")
-    print("Make sure requirements-celery.txt includes 'ultralytics'")
+    print("Make sure requirements-gpu-pypi.txt includes 'ultralytics' (Celery GPU image)")
     sys.exit(1)
 except Exception as e:
     print(f"✗ Unexpected error: {e}")

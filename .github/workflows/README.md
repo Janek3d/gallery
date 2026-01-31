@@ -2,16 +2,16 @@
 
 This directory contains GitHub Actions workflows for CI/CD.
 
-**Note:** Workflows are currently disabled (renamed to `.disabled`). To enable them, rename the files back to `.yml`.
-
 ## Workflows
 
-### `tests.yml.disabled` (Currently Disabled)
+### `tests.yml` (Enabled)
 
-Runs the test suite on every pull request and push to main branches.
+Runs the full test suite (unit + e2e with Playwright) on every pull request and push to main branches.
 
 **Features:**
 - Tests on Python 3.11 and 3.12
+- **uv** for installs with dependency cache (`enable-cache: true`, keyed by `uv.lock`)
+- **Playwright** for e2e: Chromium only; browser binaries cached (`~/.cache/ms-playwright`, keyed by `uv.lock`); on cache hit only OS deps are installed
 - Uses SQLite (no external database required)
 - Generates coverage reports
 - Uploads test results as artifacts
@@ -20,6 +20,10 @@ Runs the test suite on every pull request and push to main branches.
 **Triggers:**
 - Pull requests to `main`, `master`, or `develop`
 - Pushes to `main`, `master`, or `develop`
+
+### `tests.yml.disabled` (Legacy / Disabled)
+
+Previous test workflow (pip-based, no Playwright). Superseded by `tests.yml`.
 
 ### `lint.yml.disabled` (Currently Disabled)
 
@@ -46,15 +50,13 @@ If you don't want Codecov, the workflow will still work - it just won't upload c
 
 ## Customization
 
-### Enable Workflows
+### Enable Lint Workflow
 
-To enable the workflows, rename:
-- `tests.yml.disabled` → `tests.yml`
-- `lint.yml.disabled` → `lint.yml`
+To enable the lint workflow, rename `lint.yml.disabled` → `lint.yml`.
 
 ### Add More Python Versions
 
-Edit `.github/workflows/tests.yml` (after enabling):
+Edit `.github/workflows/tests.yml`:
 
 ```yaml
 matrix:

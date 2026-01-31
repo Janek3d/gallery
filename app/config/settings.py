@@ -275,7 +275,17 @@ LOGIN_REDIRECT_URL = config.get('authentication.login_redirect_url', '/')
 LOGOUT_REDIRECT_URL = config.get('authentication.logout_redirect_url', '/')
 
 # Social Account Providers Configuration
-SOCIALACCOUNT_PROVIDERS = {}
+SOCIALACCOUNT_PROVIDERS = {
+    'auth0': {
+        'AUTH0_URL': config.get('social_auth.auth0.auth0_url', ''),
+        'OAUTH_PKCE_ENABLED': True,
+        'APP': {
+            'client_id': config.get('social_auth.auth0.client_id', ''),
+            'secret': config.get('social_auth.auth0.secret', ''),
+            'key': '',
+        }
+    }
+}
 
 # Google OAuth
 # Uses SOCIAL_AUTH_GOOGLE_ENABLED, SOCIAL_AUTH_GOOGLE_CLIENT_ID, etc. env vars or config.yaml

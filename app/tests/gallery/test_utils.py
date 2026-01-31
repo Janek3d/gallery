@@ -38,7 +38,7 @@ class TestSignedURL:
         # Parse the URL to extract signature and expires_at
         parsed_url = urlparse(result["url"])
         query_params = parse_qs(parsed_url.query)
-        signature = query_params["st"][0]
+        signature = query_params["st"][0].encode()
         expires_at = int(query_params["e"][0])
         
         # Verify the signed URL with all necessary arguments

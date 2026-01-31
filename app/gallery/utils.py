@@ -121,8 +121,9 @@ def verify_signed_url(file_id, signature, expires_at, secret_key=None, algorithm
             base_url = getattr(settings, 'GALLERY_MEDIA_BASE_URL', '/media')
             uri_path = f"{base_url}/{quote(file_id)}"
         string_to_sign = f"{uri_path}{expires_at}{secret_key}"
-        expected_signature = hashlib.md5(string_to_sign.encode('utf-8')).hexdigest()
-        return hmac.compare_digest(expected_signature, signature)
+        expected_signature = hashlib.md5(string_to_sign.encode('utf-8')).digest()
+        expected_signature_b64 = base64.urlsafe_b64encode(expected_signature).rstrip(b'=')
+        return hmac.compare_digest(expected_signature_b64, signature)
     else:
         # SHA256 verification
         base_url = getattr(settings, 'GALLERY_MEDIA_BASE_URL', '/media')

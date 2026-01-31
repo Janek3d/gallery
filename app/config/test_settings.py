@@ -61,3 +61,4 @@ USE_S3 = False
 # Test-specific settings
 DEBUG = False
 SECRET_KEY = 'test-secret-key-for-testing-only'  # Not used in production
+ACCOUNT_EMAIL_VERIFICATION = "none"

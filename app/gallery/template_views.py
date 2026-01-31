@@ -14,9 +14,10 @@ from .utils import generate_signed_url, upload_picture_file, extract_images_from
 import logging
 
 try:
-    from .tasks import process_picture_ai
+    from .tasks import process_picture_ai, extract_picture_exif
 except ImportError:
     process_picture_ai = None
+    extract_picture_exif = None
 
 logger = logging.getLogger(__name__)
 
@@ -540,9 +541,13 @@ def picture_upload(request, album_id):
                     messages.error(request, f'Failed to upload {name}: {err}')
             if created:
                 extract_with_ai = form.cleaned_data.get('extract_with_ai', False)
+                extract_with_exif = form.cleaned_data.get('extract_with_exif', False)
                 if extract_with_ai and process_picture_ai:
                     for picture in created:
                         process_picture_ai.apply_async(args=[picture.id], queue='gpu')
+                if extract_with_exif and extract_picture_exif:
+                    for picture in created:
+                        extract_picture_exif.apply_async(args=[picture.id], queue='cpu')
                 msg = f'{len(created)} picture(s) uploaded successfully.'
                 if len(created) == 1:
                     msg = f'Picture "{created[0].title}" uploaded successfully!'

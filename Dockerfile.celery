@@ -2,9 +2,9 @@
 # For YOLO object recognition and PaddleOCR
 # Optimized for Windows WSL
 
-# Use NVIDIA CUDA base image with Python 3.11 (Python 3.14 not available in CUDA images yet)
-# Using CUDA 12.1 runtime with cuDNN for deep learning frameworks
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
+# Use NVIDIA CUDA base image (no Python; we install system Python below)
+# CUDA 13.0 runtime with cuDNN for PyTorch and PaddlePaddle GPU
+FROM nvidia/cuda:13.0.2-cudnn-runtime-ubuntu24.04
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -14,57 +14,66 @@ ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 ENV ULTRALYTICS_CACHE_DIR=/app/.ultralytics
 
-# Install Python 3.11 and system dependencies
+# Install system Python 3.12 and dependencies (Ubuntu 24.04; libgl1-mesa-glx → libgl1)
 RUN apt-get update && apt-get install -y \
-    python3.11 \
-    python3.11-dev \
+    python3 \
+    python3-dev \
+    python3-venv \
     python3-pip \
     postgresql-client \
     libpq-dev \
     gcc \
     g++ \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
     libxrender-dev \
     libgomp1 \
     wget \
+    curl \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Create symlink for python and pip
-# RUN ln -s /usr/bin/python3.11 /usr/bin/python && \
-#     ln -s /usr/bin/pip3 /usr/bin/pip
+# Install uv and create venv at /opt/venv (do not use UV_SYSTEM_PYTHON: Ubuntu 24.04 is externally managed)
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+ENV PATH="/root/.local/bin:$PATH"
 
-# Set work directory
+ENV VENV_PATH=/opt/venv
+RUN uv venv "$VENV_PATH"
+ENV VIRTUAL_ENV="$VENV_PATH" PATH="$VENV_PATH/bin:$PATH"
+
+# Install deps with uv: base from lockfile (no app/ yet), then GPU from requirements-gpu-*.txt
 WORKDIR /app
+COPY pyproject.toml uv.lock ./
+COPY requirements-gpu-pypi.txt requirements-gpu-pytorch.txt requirements-gpu-paddle.txt ./
 
-# Copy and install GPU-specific dependencies
-COPY requirements-celery.txt ./
-# Install project dependencies
-COPY pyproject.toml ./
-# Upgrade pip
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements-celery.txt && \
-    pip install --no-cache-dir -e . && \
-    rm -rf /root/.cache/pip && \
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+ENV UV_NO_DEV=1
+ENV UV_LINK_MODE=copy
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-install-project && \
+    uv pip install -r requirements-gpu-pypi.txt && \
+    uv pip install -r requirements-gpu-pytorch.txt && \
+    uv pip install -r requirements-gpu-paddle.txt && \
     rm -rf /tmp/*
 
-# Copy Django app
-COPY app/ .
-
+# Download YOLO models (use venv Python)
 WORKDIR /scripts
-# Copy and run script to download YOLO models during build
 COPY scripts/download_yolo_models.py .
-RUN python3 download_yolo_models.py 
+RUN python download_yolo_models.py
 
 WORKDIR /app
-# Create a non-root user and set permissions
-RUN useradd -m -u 1000 appuser && \
+# Copy app last so changes to app code don't invalidate install/yolo layers
+COPY app/ .
+
+# Non-root user; ensure appuser can use venv
+RUN useradd -m -u 1001 appuser && \
     chown -R appuser:appuser /app && \
-    chown -R appuser:appuser /app/.ultralytics || true
+    chown -R appuser:appuser /opt/venv && \
+    chown -R appuser:appuser /app/.ultralytics 2>/dev/null
 USER appuser
 
-# Default command (can be overridden in docker-compose)
-CMD ["celery", "-A", "config", "worker", "--loglevel=info", "--concurrency=2"]
+# Celery from venv (PATH already set)
+CMD ["celery", "-A", "config", "worker", "--loglevel=info", "--concurrency=2", "-E"]

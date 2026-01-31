@@ -138,6 +138,12 @@ class PictureUploadForm(forms.ModelForm):
         label="Extract text and objects (YOLO + PaddleOCR)",
         help_text="Run object detection (YOLO → ai_tags) and OCR (PaddleOCR → ocr_text) on uploaded images.",
     )
+    extract_with_exif = forms.BooleanField(
+        required=False,
+        initial=False,
+        label="Extract EXIF metadata (camera, location, etc.)",
+        help_text="Extract camera make/model, date taken, GPS and add as tags (runs on CPU worker).",
+    )
 
     class Meta:
         model = Picture

@@ -80,10 +80,11 @@ class Tag(models.Model):
 
 
 class PictureTag(models.Model):
-    """Through model for Picture–Tag with source: user-added or AI-added."""
+    """Through model for Picture–Tag with source: user-added, AI-added, or EXIF-derived."""
     class Source(models.TextChoices):
         USER = 'user', 'User'
         AI = 'ai', 'AI'
+        EXIF = 'exif', 'EXIF'
 
     picture = models.ForeignKey(
         'Picture',
@@ -101,7 +102,7 @@ class PictureTag(models.Model):
         max_length=10,
         choices=Source.choices,
         verbose_name='Source',
-        help_text='Whether this tag was added by user or by AI (e.g. YOLO)',
+        help_text='Whether this tag was added by user, AI (e.g. YOLO), or EXIF extraction',
     )
 
     class Meta:
@@ -541,6 +542,14 @@ class Picture(models.Model):
         ).distinct()
 
     @property
+    def exif_tags(self):
+        """Tag queryset for EXIF-derived tags (source='exif')."""
+        return Tag.objects.filter(
+            picture_tag_links__picture=self,
+            picture_tag_links__source=PictureTag.Source.EXIF,
+        ).distinct()
+
+    @property
     def all_tags(self):
         """List of all tag names (user + AI)."""
         names = list(self.tags.values_list('name', flat=True))
@@ -629,3 +638,25 @@ class Picture(models.Model):
             name = (tag_name or '').strip()
             if name:
                 self.add_ai_tag(name)
+
+    def add_exif_tag(self, tag_name):
+        """Add an EXIF-derived tag (source='exif')."""
+        tag, _ = Tag.get_or_create_tag(tag_name)
+        created = PictureTag.objects.get_or_create(
+            picture=self,
+            tag=tag,
+            source=PictureTag.Source.EXIF,
+            defaults={},
+        )[1]
+        if created:
+            tag.increment_usage()
+
+    def set_exif_tags(self, tag_names):
+        """Replace EXIF tags with the given list of tag names (e.g. from EXIF extraction)."""
+        for pt in PictureTag.objects.filter(picture=self, source=PictureTag.Source.EXIF).select_related('tag'):
+            pt.tag.decrement_usage()
+        PictureTag.objects.filter(picture=self, source=PictureTag.Source.EXIF).delete()
+        for tag_name in (tag_names or []):
+            name = (tag_name or '').strip()
+            if name:
+                self.add_exif_tag(name)
