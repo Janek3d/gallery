@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.facebook',
     'allauth.socialaccount.providers.github',
+    'allauth.socialaccount.providers.auth0',
     
     # Local apps
     'gallery',
