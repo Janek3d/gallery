@@ -6,9 +6,9 @@
 
 {% block content %}
 <div>
-    <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">Sign Out</h2>
+    <h2 class="text-2xl font-bold text-slate-900 mb-6 text-center">Sign Out</h2>
     
-    <p class="text-gray-600 text-center mb-6">
+    <p class="text-slate-600 text-center mb-6">
         Are you sure you want to sign out?
     </p>
     
@@ -20,12 +20,12 @@
         
         <div class="space-y-3">
             <button type="submit" 
-                    class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+                    class="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500/50 transition-all shadow-lg shadow-red-500/20">
                 Sign out
             </button>
             
             <a href="{% url 'gallery:gallery_list' %}" 
-               class="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+               class="w-full flex justify-center py-3 px-4 border border-slate-200 text-sm font-medium rounded-xl text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500/30 transition-colors">
                 Cancel
             </a>
         </div>
