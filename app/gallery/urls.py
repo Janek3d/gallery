@@ -1,0 +1,56 @@
+"""
+URL configuration for Gallery app
+"""
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import GalleryViewSet, AlbumViewSet, PictureViewSet, TagViewSet
+from . import template_views
+
+app_name = 'gallery'
+
+# API routes
+router = DefaultRouter()
+router.register(r'galleries', GalleryViewSet, basename='gallery')
+router.register(r'albums', AlbumViewSet, basename='album')
+router.register(r'pictures', PictureViewSet, basename='picture')
+router.register(r'tags', TagViewSet, basename='tag')
+
+urlpatterns = [
+    # API routes
+    path('api/', include(router.urls)),
+    
+    # Template-based routes
+    path('', template_views.gallery_list, name='gallery_list'),
+    path('galleries/create/', template_views.gallery_create, name='gallery_create'),
+    path('galleries/<int:pk>/', template_views.gallery_detail, name='gallery_detail'),
+    path('galleries/<int:pk>/delete/', template_views.gallery_delete, name='gallery_delete'),
+    path('galleries/<int:pk>/edit/', template_views.gallery_edit, name='gallery_edit'),
+    path('galleries/delete/', template_views.gallery_bulk_delete, name='gallery_bulk_delete'),
+    
+    # HTMX endpoints for galleries
+    path('galleries/<int:pk>/toggle-favorite/', template_views.gallery_toggle_favorite, name='gallery_toggle_favorite'),
+    path('galleries/<int:pk>/add-tag/', template_views.gallery_add_tag, name='gallery_add_tag'),
+    path('galleries/<int:pk>/remove-tag/', template_views.gallery_remove_tag, name='gallery_remove_tag'),
+    
+    # Albums
+    path('albums/<int:pk>/', template_views.album_detail, name='album_detail'),
+    path('albums/<int:pk>/delete/', template_views.album_delete, name='album_delete'),
+    path('albums/<int:pk>/edit/', template_views.album_edit, name='album_edit'),
+    path('galleries/<int:gallery_id>/albums/create/', template_views.album_create, name='album_create'),
+    path('galleries/<int:pk>/albums/delete/', template_views.album_bulk_delete, name='album_bulk_delete'),
+    
+    # HTMX endpoints for albums
+    path('albums/<int:pk>/add-tag/', template_views.album_add_tag, name='album_add_tag'),
+    path('albums/<int:pk>/remove-tag/', template_views.album_remove_tag, name='album_remove_tag'),
+    
+    # Pictures
+    path('pictures/<int:pk>/', template_views.picture_detail, name='picture_detail'),
+    path('pictures/<int:pk>/edit/', template_views.picture_edit, name='picture_edit'),
+    path('pictures/<int:pk>/delete/', template_views.picture_delete, name='picture_delete'),
+    path('albums/<int:album_id>/pictures/upload/', template_views.picture_upload, name='picture_upload'),
+    path('albums/<int:pk>/pictures/delete/', template_views.picture_bulk_delete, name='picture_bulk_delete'),
+
+    # HTMX endpoints for pictures
+    path('pictures/<int:pk>/toggle-favorite/', template_views.picture_toggle_favorite, name='picture_toggle_favorite'),
+    path('pictures/<int:pk>/reprocess-ai/', template_views.picture_reprocess_ai, name='picture_reprocess_ai'),
+]

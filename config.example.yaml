@@ -1,0 +1,89 @@
+# Gallery Service Configuration Example
+# Copy this file to config.yaml and customize for your environment
+# This file is mounted into containers via docker-compose configs
+
+django:
+  secret_key: ""  # Override via SECRET_KEY env var for security
+  debug: false
+  allowed_hosts:
+    - localhost
+    - 127.0.0.1
+  site_id: 1
+  timezone: "UTC"
+  language_code: "en-us"
+
+database:
+  name: "gallery"
+  user: "postgres"
+  password: "postgres"  # Override via DB_PASSWORD env var
+  host: "db"
+  port: 5432
+
+authentication:
+  account_email_verification: "mandatory"  # mandatory, optional, none
+  login_redirect_url: "/"
+  logout_redirect_url: "/"
+
+social_auth:
+  google:
+    enabled: false
+    client_id: ""
+    secret: ""
+  facebook:
+    enabled: false
+    app_id: ""
+    app_secret: ""
+  github:
+    enabled: false
+    client_id: ""
+    secret: ""
+
+celery:
+  broker_url: "redis://redis:6379/0"
+  result_backend: "redis://redis:6379/0"
+  task_time_limit: 1800  # 30 minutes in seconds
+  task_soft_time_limit: 1500  # 25 minutes in seconds
+  worker_prefetch_multiplier: 1
+  worker_max_tasks_per_child: 1000
+  worker_concurrency: 4
+
+flower:
+  port: 5555
+  username: "admin"
+  password: ""  # Override via FLOWER_PASSWORD env var
+
+storage:
+  use_s3: false
+  s3:
+    endpoint_url: "http://seaweedfs:8333"
+    bucket_name: "gallery"
+    region_name: "us-east-1"
+    use_ssl: false
+    access_key_id: ""
+    secret_access_key: ""
+
+static_files:
+  static_url: "/static/"
+  static_root: "staticfiles"
+  media_url: "/media/"
+  media_root: "media"
+
+server:
+  gunicorn_workers: 4
+  gunicorn_timeout: 120
+
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+  # Optional: Log file path (enables file logging with rotation)
+  # file: "/var/log/gallery/app.log"
+  file_max_bytes: 10485760  # 10MB
+  file_backup_count: 5
+  # Per-logger levels (optional, defaults to 'level' above)
+  django_level: "INFO"
+  django_request_level: "WARNING"
+  django_server_level: "INFO"
+  django_db_level: "WARNING"
+  celery_level: "INFO"
+  boto3_level: "WARNING"
+  botocore_level: "WARNING"

@@ -1,0 +1,5 @@
+# PyPI-only GPU deps (no extra index)
+ultralytics
+opencv-python-headless
+opencv-contrib-python-headless
+paddleocr>=3.0.0

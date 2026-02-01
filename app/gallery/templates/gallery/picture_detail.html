@@ -1,0 +1,139 @@
+{% extends "gallery/base.html" %}
+{% load static %}
+
+{% block title %}{{ picture.title|default:"Picture" }} - SmartGallery{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Navigation -->
+    <div class="mb-4">
+        <a href="{% url 'gallery:album_detail' picture.album.id %}" 
+           class="text-blue-600 hover:text-blue-800">
+            ← Back to {{ picture.album.name }}
+        </a>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="md:flex">
+            <!-- Image -->
+            <div class="md:w-2/3 bg-gray-100 flex items-center justify-center p-8">
+                {% if signed_url %}
+                    <img src="{{ signed_url }}" 
+                         alt="{{ picture.title|default:'Picture' }}"
+                         class="max-w-full max-h-[600px] object-contain rounded-lg shadow-lg">
+                {% else %}
+                    <div class="text-gray-400 text-center">
+                        <p class="text-xl mb-2">No image available</p>
+                        <p class="text-sm">File ID: {{ picture.seaweedfs_file_id }}</p>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Details -->
+            <div class="md:w-1/3 p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h1 class="text-2xl font-bold text-gray-900">
+                        {{ picture.title|default:"Untitled" }}
+                    </h1>
+                    <!-- Favorite Toggle (HTMX) -->
+                    <button hx-post="{% url 'gallery:picture_toggle_favorite' picture.id %}"
+                            hx-target="this"
+                            hx-swap="outerHTML"
+                            class="text-3xl focus:outline-none favorite-star">
+                        {% if picture.is_favorite %}
+                            ⭐
+                        {% else %}
+                            ☆
+                        {% endif %}
+                    </button>
+                </div>
+                
+                <p class="text-gray-600 mb-4">{{ picture.description }}</p>
+                
+                <!-- Metadata -->
+                <div class="mb-4 space-y-2 text-sm">
+                    {% if picture.width and picture.height %}
+                        <p><span class="font-medium">Dimensions:</span> {{ picture.width }} × {{ picture.height }} px</p>
+                    {% endif %}
+                    {% if picture.file_size %}
+                        <p><span class="font-medium">Size:</span> {{ picture.file_size|filesizeformat }}</p>
+                    {% endif %}
+                    {% if picture.taken_at %}
+                        <p><span class="font-medium">Taken:</span> {{ picture.taken_at|date:"F d, Y H:i" }}</p>
+                    {% endif %}
+                    <p><span class="font-medium">Uploaded:</span> {{ picture.uploaded_at|date:"F d, Y" }}</p>
+                </div>
+                
+                <!-- User Tags -->
+                <div class="mb-4">
+                    <h3 class="font-medium text-gray-700 mb-2">Tags</h3>
+                    <div class="flex flex-wrap gap-2">
+                        {% for tag in picture.user_tags %}
+                            <span class="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded">
+                                {{ tag.name }}
+                            </span>
+                        {% empty %}
+                            <span class="text-sm text-gray-400">No tags</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- AI Tags -->
+                <div class="mb-4">
+                    <h3 class="font-medium text-gray-700 mb-2">AI Tags</h3>
+                    <div class="flex flex-wrap gap-2">
+                        {% for tag in picture.ai_tags %}
+                            <span class="px-2 py-1 bg-green-100 text-green-800 text-sm rounded">
+                                {{ tag.name }}
+                            </span>
+                        {% empty %}
+                            <span class="text-sm text-gray-400">No AI tags</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- OCR Text -->
+                {% if picture.ocr_text %}
+                    <div class="mb-4">
+                        <h3 class="font-medium text-gray-700 mb-2">Extracted Text</h3>
+                        <p class="text-sm text-gray-600 bg-gray-50 p-3 rounded">{{ picture.ocr_text|truncatewords:50 }}</p>
+                    </div>
+                {% endif %}
+                
+                <!-- EXIF Data -->
+                {% if picture.exif_data %}
+                    <div class="mb-4">
+                        <h3 class="font-medium text-gray-700 mb-2">EXIF Data</h3>
+                        <div class="text-xs text-gray-600 bg-gray-50 p-3 rounded space-y-1">
+                            {% for key, value in picture.exif_data.items %}
+                                <p><span class="font-medium">{{ key }}:</span> {{ value }}</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Re-run AI / Edit / Delete -->
+                <div class="mt-6 pt-4 border-t border-gray-200 flex flex-wrap gap-4">
+                    <form method="post" action="{% url 'gallery:picture_reprocess_ai' picture.id %}" class="inline" onsubmit="return confirm('Re-run YOLO and OCR on this picture? Existing AI tags and extracted text will be replaced.');">
+                        {% csrf_token %}
+                        <button type="submit" class="text-green-600 hover:text-green-800 font-medium">
+                            Re-run YOLO + OCR
+                        </button>
+                    </form>
+                    <a href="{% url 'gallery:picture_edit' picture.id %}" 
+                       class="text-blue-600 hover:text-blue-800 font-medium">
+                        Edit (add tags)
+                    </a>
+                    <form method="post" action="{% url 'gallery:picture_delete' picture.id %}" class="inline" onsubmit="return confirm('Delete this picture?');">
+                        {% csrf_token %}
+                        <button type="submit" class="text-red-600 hover:text-red-800 font-medium">
+                            Delete picture
+                        </button>
+                    </form>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Re-run AI to refresh object tags and OCR text (e.g. after model update).</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

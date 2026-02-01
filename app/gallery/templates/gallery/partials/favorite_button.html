@@ -1,0 +1,23 @@
+{% if object_type == 'gallery' %}
+    <button hx-post="{% url 'gallery:gallery_toggle_favorite' object_id %}"
+            hx-target="this"
+            hx-swap="outerHTML"
+            class="text-2xl focus:outline-none favorite-star">
+        {% if object.is_favorite %}
+            ⭐
+        {% else %}
+            ☆
+        {% endif %}
+    </button>
+{% elif object_type == 'picture' %}
+    <button hx-post="{% url 'gallery:picture_toggle_favorite' object_id %}"
+            hx-target="this"
+            hx-swap="outerHTML"
+            class="text-2xl focus:outline-none favorite-star">
+        {% if object.is_favorite %}
+            ⭐
+        {% else %}
+            ☆
+        {% endif %}
+    </button>
+{% endif %}

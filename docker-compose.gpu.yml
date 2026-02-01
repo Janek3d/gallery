@@ -1,0 +1,47 @@
+# Docker Compose for Local GPU Worker
+# Runs ONLY: celery-gpu worker
+# Connects to Redis and Database on remote VPS
+
+version: '3.8'
+
+services:
+  celery-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile.celery
+    container_name: gallery_celery_gpu
+    command: celery -A config worker --loglevel=info --concurrency=${CELERY_GPU_WORKER_CONCURRENCY:-2} --queues=gpu
+    volumes:
+      # - ./app:/app
+      - media_volume:/app/media
+    configs:
+      - source: gallery_config
+        target: /config/config.yaml
+    env_file:
+      - .env
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CONFIG_PATH=/config/config.yaml
+      # Redis and Database connections are configured via .env file
+      # Make sure to set CELERY_BROKER_URL, CELERY_RESULT_BACKEND, and database.* in .env
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - gallery_network
+
+volumes:
+  media_volume:
+
+configs:
+  gallery_config:
+    file: ./config.yaml
+
+networks:
+  gallery_network:
+    driver: bridge

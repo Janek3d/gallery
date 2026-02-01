@@ -1,0 +1,155 @@
+{% extends "gallery/base.html" %}
+{% load static %}
+
+{% block title %}{{ album.name }} - SmartGallery{% endblock %}
+
+{% block content %}
+<!-- Album Header -->
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <div class="flex justify-between items-start mb-4">
+        <div class="flex-1">
+            <div class="flex items-center gap-3 mb-2">
+                <a href="{% url 'gallery:gallery_detail' album.gallery.id %}" 
+                   class="text-blue-600 hover:text-blue-800">← {{ album.gallery.name }}</a>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ album.name }}</h1>
+            <p class="text-gray-600 mb-3">{{ album.description }}</p>
+            
+            <!-- Tags (HTMX for removal) -->
+            <div class="flex flex-wrap gap-2 mb-4">
+                {% for tag in album.tags.all %}
+                    <span class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded">
+                        {{ tag.name }}
+                        <button type="button" hx-post="{% url 'gallery:album_remove_tag' album.id %}"
+                                hx-vals='{"tag": "{{ tag.name }}"}'
+                                hx-target="closest span"
+                                hx-swap="outerHTML"
+                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                class="text-blue-600 hover:text-blue-800 focus:outline-none"
+                                title="Remove tag">
+                            ×
+                        </button>
+                    </span>
+                {% empty %}
+                    <span class="text-sm text-gray-400">No tags</span>
+                {% endfor %}
+                <!-- Add Tag Form (HTMX) -->
+                <form hx-post="{% url 'gallery:album_add_tag' album.id %}"
+                      hx-target="closest div"
+                      hx-swap="outerHTML"
+                      class="inline-flex gap-1">
+                    <input type="text" 
+                           name="tag" 
+                           placeholder="Add tag..." 
+                           class="px-2 py-1 border border-gray-300 rounded text-sm"
+                           required>
+                    <button type="submit" class="px-2 py-1 bg-blue-600 text-white rounded text-sm">+</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="flex gap-2">
+            <a href="{% url 'gallery:album_edit' album.id %}" 
+               class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded">
+                Edit
+            </a>
+            <form method="post" action="{% url 'gallery:album_delete' album.id %}" class="inline" onsubmit="return confirm('Delete this album and all its pictures?');">
+                {% csrf_token %}
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                    Delete album
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Pictures Grid -->
+<div class="mb-6">
+    <form method="post" action="{% url 'gallery:picture_bulk_delete' album.id %}" id="bulk-delete-form" class="picture-bulk-delete-form">
+        {% csrf_token %}
+        <style>
+            .picture-bulk-delete-form .picture-card-select,
+            .picture-bulk-delete-form .picture-delete-selected-btn { display: none; }
+            .picture-bulk-delete-form.bulk-delete-mode .picture-card-select,
+            .picture-bulk-delete-form.bulk-delete-mode .picture-delete-selected-btn { display: flex; }
+        </style>
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+            <h2 class="text-2xl font-bold text-gray-900">Pictures ({{ pictures|length }})</h2>
+            <div class="flex gap-2 items-center">
+                <button type="button"
+                        class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+                        onclick="document.getElementById('bulk-delete-form').classList.toggle('bulk-delete-mode'); this.textContent = document.getElementById('bulk-delete-form').classList.contains('bulk-delete-mode') ? 'Cancel' : 'Select for delete';">
+                    Select for delete
+                </button>
+                <button type="submit" name="bulk_delete" value="1"
+                        class="picture-delete-selected-btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                        form="bulk-delete-form"
+                        onclick="return confirm('Delete selected pictures?');">
+                    Delete selected
+                </button>
+                <a href="{% url 'gallery:picture_upload' album.id %}" 
+                   class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    + Upload Pictures
+                </a>
+            </div>
+        </div>
+
+    {% if pictures %}
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            {% for picture in pictures %}
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow group relative">
+                    <a href="{% url 'gallery:picture_detail' picture.id %}" class="block">
+                        <div class="picture-card-select absolute top-2 left-2 z-10 items-center gap-1 cursor-pointer" onclick="event.preventDefault(); event.stopPropagation();">
+                            <label class="flex items-center gap-1 bg-white/90 rounded px-1 py-0.5 shadow w-fit">
+                                <input type="checkbox" name="ids" value="{{ picture.id }}" form="bulk-delete-form" class="rounded border-gray-300">
+                                <span class="text-xs text-gray-700">Select</span>
+                            </label>
+                        </div>
+                        <div class="aspect-square bg-gray-200 relative">
+                            {% if picture.signed_url %}
+                                <img src="{{ picture.signed_url }}" 
+                                     alt="{{ picture.title }}"
+                                     class="w-full h-full object-cover"
+                                     loading="lazy">
+                            {% else %}
+                                <div class="w-full h-full flex items-center justify-center text-gray-400">
+                                    No Image
+                                </div>
+                            {% endif %}
+                            <!-- Favorite Toggle Overlay (HTMX) -->
+                            <button type="button" hx-post="{% url 'gallery:picture_toggle_favorite' picture.id %}"
+                                    hx-target="this"
+                                    hx-swap="outerHTML"
+                                    class="absolute top-2 right-2 text-2xl opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none">
+                                {% if picture.is_favorite %}
+                                    ⭐
+                                {% else %}
+                                    ☆
+                                {% endif %}
+                            </button>
+                        </div>
+                        <div class="p-2">
+                            <p class="text-sm font-medium text-gray-900 truncate">{{ picture.title|default:"Untitled" }}</p>
+                            <!-- Picture Tags -->
+                            <div class="flex flex-wrap gap-1 mt-1">
+                                {% for tag in picture.tags.all|slice:":2" %}
+                                    <span class="px-1 py-0.5 bg-gray-100 text-gray-700 text-xs rounded">{{ tag.name }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-12 bg-white rounded-lg">
+            <p class="text-gray-500">No pictures yet.</p>
+            <a href="{% url 'gallery:picture_upload' album.id %}" 
+               class="mt-4 inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Upload First Picture
+            </a>
+        </div>
+    {% endif %}
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+.git
+.gitignore
+.github
+.cursor
+
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+.venv/
+venv/
+env/
+
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+junit.xml
+
+# Local/dev config & secrets
+.env
+.env.*
+config.yaml
+
+# Runtime/generated artifacts
+app/celerybeat-schedule
+app/celerybeat-schedule.*
+**/celerybeat-schedule
+**/celerybeat-schedule.*
+
+# Media/static outputs (generated or mounted at runtime)
+media/
+static/
+staticfiles/
+app/media/
+app/static/
+app/staticfiles/
