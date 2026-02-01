@@ -1,9 +1,40 @@
 {
-    "mcpServers": {
-      "10x-mvp-tracker": {
-        "command": "npx",
-        "args": ["-y", "@przeprogramowani/10x-mvp-tracker@latest"],
-        "transport": "stdio"
-      }
+  "mcpServers": {
+    "10x-mvp-tracker": {
+      "command": "npx",
+      "args": ["-y", "@przeprogramowani/10x-mvp-tracker@latest"],
+      "transport": "stdio"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "transport": "stdio"
+    },
+    "fetch": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"],
+      "transport": "stdio"
+    },
+    "git": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-git"],
+      "transport": "stdio"
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "transport": "stdio"
+    },
+    "time": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-time"],
+      "transport": "stdio"
     }
+  }
 }
